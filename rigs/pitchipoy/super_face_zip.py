@@ -55,7 +55,7 @@ class Rig:
         else:
             self.secondary_layers = None
 
-    def symmetrical_split( self, bones ):
+    def symmetrical_split(self, bones):
 
         # RE pattern match right or left parts
         # match the letter "L" (or "R"), followed by an optional dot (".") 
@@ -68,7 +68,7 @@ class Rig:
 
         return left, right
         
-    def create_deformation( self ):
+    def create_deformation(self):
         org_bones = self.org_bones
         
         bpy.ops.object.mode_set(mode ='EDIT')
@@ -105,7 +105,7 @@ class Rig:
         
         return { 'all' : def_bones }
 
-    def create_ctrl( self, bones ):
+    def create_ctrl(self, bones):
         org_bones = self.org_bones
 
         ## create control bones
@@ -118,7 +118,7 @@ class Rig:
         
         distance = ( eyeL_e.head - eyeR_e.head ) * 3
         distance = distance.cross( (0, 0, 1) )
-        
+
         eyeL_ctrl_name = strip_org( bones['eyes'][0] )
         eyeR_ctrl_name = strip_org( bones['eyes'][1] )
         
@@ -136,7 +136,7 @@ class Rig:
         
         for bone in [ eyeL_ctrl_e, eyeR_ctrl_e, eyes_ctrl_e ]:
             bone.tail[:] = bone.head + Vector( [ 0, 0, eyeL_e.length * 0.75 ] )
-        
+
         ## Widget for transforming the both eyes
         eye_master_names = []
         for bone in bones['eyes']:
@@ -229,7 +229,7 @@ class Rig:
             'nose'   : [ master_nose                        ]
             }
 
-    def create_tweak( self, bones, uniques, tails ):
+    def create_tweak(self, bones, uniques, tails):
         org_bones = self.org_bones
 
         ## create tweak bones
@@ -325,7 +325,7 @@ class Rig:
                     
         return { 'all' : tweaks }
 
-    def all_controls( self ):
+    def all_controls(self):
         org_bones = self.org_bones
 
         org_tongue_bones  = sorted([ bone for bone in org_bones if 'tongue' in bone ])
@@ -370,7 +370,7 @@ class Rig:
         
         return { 'ctrls' : ctrls, 'tweaks' : tweaks }, tweak_unique
 
-    def create_mch( self, jaw_ctrl, tongue_ctrl ):
+    def create_mch(self, jaw_ctrl, tongue_ctrl):
         org_bones = self.org_bones
         bpy.ops.object.mode_set(mode ='EDIT')
         eb = self.obj.data.edit_bones
@@ -465,7 +465,7 @@ class Rig:
         
         return mch_bones
         
-    def parent_bones( self, all_bones, tweak_unique ):
+    def parent_bones(self, all_bones, tweak_unique):
         org_bones = self.org_bones
         bpy.ops.object.mode_set(mode ='EDIT')
         eb = self.obj.data.edit_bones
@@ -648,7 +648,7 @@ class Rig:
             eb[ bone                       ].parent = eb[ 'ear.L' ]
             eb[ bone.replace( '.L', '.R' ) ].parent = eb[ 'ear.R' ]
 
-    def make_constraits( self, constraint_type, bone, subtarget, influence = 1 ):
+    def make_constraits(self, constraint_type, bone, subtarget, influence = 1):
         org_bones = self.org_bones
         bpy.ops.object.mode_set(mode ='OBJECT')
         pb = self.obj.pose.bones
@@ -702,7 +702,14 @@ class Rig:
             const.target    = self.obj
             const.subtarget = subtarget
             const.influence = influence
-        
+
+        elif constraint_type == 'teeth':
+
+            const = owner_pb.constraints.new( 'COPY_TRANSFORMS' )
+            const.target    = self.obj
+            const.subtarget = subtarget
+            const.influence = influence
+
         elif constraint_type == 'tweak_copyloc':
         
             const = owner_pb.constraints.new( 'COPY_LOCATION' )
@@ -842,7 +849,10 @@ class Rig:
         self.make_constraits( 'mch_jaw_master', 'MCH-jaw_master.002', 'jaw_master', 0.35  )
         self.make_constraits( 'mch_jaw_master', 'MCH-jaw_master.003', 'jaw_master', 0.10  )
         self.make_constraits( 'mch_jaw_master', 'MCH-jaw_master.004', 'jaw_master', 0.025 )
-        
+
+        self.make_constraits( 'teeth', 'ORG-teeth.T', 'teeth.T', 1.00 )
+        self.make_constraits( 'teeth', 'ORG-teeth.B', 'teeth.B', 1.00 )
+
         for bone in all_bones['mch']['jaw'][1:-1]:
             self.make_constraits( 'mch_jaw_master', bone, 'MCH-mouth_lock' )
             
@@ -1000,30 +1010,48 @@ class Rig:
         bpy.ops.object.mode_set(mode = 'OBJECT')
         rig = self.obj
         pb = rig.pose.bones
-        groups = {'Face Primary': 'THEME03', 'Face Secondary': 'THEME04'}
+        groups = {'Face': 'THEME11', 'Face Primary': 'THEME01', 'Face Secondary': 'THEME09'}
 
         for g in groups:
             if g not in rig.pose.bone_groups.keys():
                 bg = rig.pose.bone_groups.new(g)
                 bg.color_set = groups[g]
 
-        # Face Primary
+        # Face
         ctrls=[]
         for group in bones['ctrls']:
-            ctrls += bones['ctrls'][group]
+            if group != 'eyes':
+                ctrls += bones['ctrls'][group]
         for ctrl in ctrls:
-            pb[ctrl].bone_group = rig.pose.bone_groups['Face Primary']
+            pb[ctrl].bone_group = rig.pose.bone_groups['Face']
+
+        # eyes
+        if 'eyes' in bones['ctrls']:
+            for b in bones['ctrls']['eyes']:
+                if 'master' in b:
+                    pb[b].bone_group = rig.pose.bone_groups['Face']
+                elif ('.L' in b) or ('.R' in b):
+                    pb[b].bone_group = rig.pose.bone_groups['Face Secondary']
+                else:
+                    pb[b].bone_group = rig.pose.bone_groups['Face Primary']
+
         # Face Secondary
         tweaks = bones['tweaks']['all']
         for twk in tweaks:
-            pb[twk].bone_group = rig.pose.bone_groups['Face Secondary']
+            layer = pb[twk].bone.layers[:].index(True)
+            if layer == 0:
+                pb[twk].bone_group = rig.pose.bone_groups['Face']
+            elif layer == 1:
+                pb[twk].bone_group = rig.pose.bone_groups['Face Primary']
+            elif layer == 2:
+                pb[twk].bone_group = rig.pose.bone_groups['Face Secondary']
 
     def generate(self):
         
         all_bones, tweak_unique = self.create_bones()
-        self.parent_bones( all_bones, tweak_unique )
-        self.constraints( all_bones )
-        jaw_prop, eyes_prop = self.drivers_and_props( all_bones )
+        self.parent_bones(all_bones, tweak_unique)
+        self.constraints(all_bones)
+        jaw_prop, eyes_prop = self.drivers_and_props(all_bones)
 
         
         # Create UI
@@ -1037,7 +1065,7 @@ class Rig:
                 all_ctrls.append( bone )
 
         self.bone_grouping(all_bones)
-        
+
         controls_string = ", ".join(["'" + x + "'" for x in all_ctrls])
         return [ script % (
             controls_string, 
@@ -1119,8 +1147,8 @@ def create_sample(obj):
     bone.use_connect = False
     bones['face'] = bone.name
     bone = arm.edit_bones.new('nose')
-    bone.head[:] = 0.0004, -0.0905, 0.1125
-    bone.tail[:] = 0.0004, -0.1105, 0.0864
+    bone.head[:] = 0.0000, -0.0905, 0.1125
+    bone.tail[:] = 0.0000, -0.1105, 0.0864
     bone.roll = 0.0000
     bone.use_connect = False
     bone.parent = arm.edit_bones[bones['face']]
@@ -1140,8 +1168,8 @@ def create_sample(obj):
     bone.parent = arm.edit_bones[bones['face']]
     bones['lip.B.L'] = bone.name
     bone = arm.edit_bones.new('jaw')
-    bone.head[:] = 0.0004, -0.0389, 0.0222
-    bone.tail[:] = 0.0004, -0.0923, 0.0044
+    bone.head[:] = 0.0000, -0.0389, 0.0222
+    bone.tail[:] = 0.0000, -0.0923, 0.0044
     bone.roll = 0.0000
     bone.use_connect = False
     bone.parent = arm.edit_bones[bones['face']]
@@ -1245,29 +1273,29 @@ def create_sample(obj):
     bone.parent = arm.edit_bones[bones['face']]
     bones['cheek.T.R'] = bone.name
     bone = arm.edit_bones.new('teeth.T')
-    bone.head[:] = 0.0004, -0.0927, 0.0613
-    bone.tail[:] = 0.0004, -0.0621, 0.0613
+    bone.head[:] = 0.0000, -0.0927, 0.0613
+    bone.tail[:] = 0.0000, -0.0621, 0.0613
     bone.roll = 0.0000
     bone.use_connect = False
     bone.parent = arm.edit_bones[bones['face']]
     bones['teeth.T'] = bone.name
     bone = arm.edit_bones.new('teeth.B')
-    bone.head[:] = 0.0004, -0.0881, 0.0397
-    bone.tail[:] = 0.0004, -0.0575, 0.0397
+    bone.head[:] = 0.0000, -0.0881, 0.0397
+    bone.tail[:] = 0.0000, -0.0575, 0.0397
     bone.roll = 0.0000
     bone.use_connect = False
     bone.parent = arm.edit_bones[bones['face']]
     bones['teeth.B'] = bone.name
     bone = arm.edit_bones.new('tongue')
-    bone.head[:] = 0.0004, -0.0781, 0.0493
-    bone.tail[:] = 0.0004, -0.0620, 0.0567
+    bone.head[:] = 0.0000, -0.0781, 0.0493
+    bone.tail[:] = 0.0000, -0.0620, 0.0567
     bone.roll = 0.0000
     bone.use_connect = False
     bone.parent = arm.edit_bones[bones['face']]
     bones['tongue'] = bone.name
     bone = arm.edit_bones.new('nose.001')
-    bone.head[:] = 0.0004, -0.1105, 0.0864
-    bone.tail[:] = 0.0004, -0.1193, 0.0771
+    bone.head[:] = 0.0000, -0.1105, 0.0864
+    bone.tail[:] = 0.0000, -0.1193, 0.0771
     bone.roll = 0.0000
     bone.use_connect = True
     bone.parent = arm.edit_bones[bones['nose']]
@@ -1287,8 +1315,8 @@ def create_sample(obj):
     bone.parent = arm.edit_bones[bones['lip.B.L']]
     bones['lip.B.L.001'] = bone.name
     bone = arm.edit_bones.new('chin')
-    bone.head[:] = 0.0004, -0.0923, 0.0044
-    bone.tail[:] = 0.0004, -0.0921, 0.0158
+    bone.head[:] = 0.0000, -0.0923, 0.0044
+    bone.tail[:] = 0.0000, -0.0921, 0.0158
     bone.roll = 0.0000
     bone.use_connect = True
     bone.parent = arm.edit_bones[bones['jaw']]
@@ -1378,22 +1406,22 @@ def create_sample(obj):
     bone.parent = arm.edit_bones[bones['cheek.T.R']]
     bones['cheek.T.R.001'] = bone.name
     bone = arm.edit_bones.new('tongue.001')
-    bone.head[:] = 0.0004, -0.0620, 0.0567
-    bone.tail[:] = 0.0004, -0.0406, 0.0584
+    bone.head[:] = 0.0000, -0.0620, 0.0567
+    bone.tail[:] = 0.0000, -0.0406, 0.0584
     bone.roll = 0.0000
     bone.use_connect = True
     bone.parent = arm.edit_bones[bones['tongue']]
     bones['tongue.001'] = bone.name
     bone = arm.edit_bones.new('nose.002')
-    bone.head[:] = 0.0004, -0.1193, 0.0771
-    bone.tail[:] = 0.0004, -0.1118, 0.0739
+    bone.head[:] = 0.0000, -0.1193, 0.0771
+    bone.tail[:] = 0.0000, -0.1118, 0.0739
     bone.roll = 0.0000
     bone.use_connect = True
     bone.parent = arm.edit_bones[bones['nose.001']]
     bones['nose.002'] = bone.name
     bone = arm.edit_bones.new('chin.001')
-    bone.head[:] = 0.0004, -0.0921, 0.0158
-    bone.tail[:] = 0.0004, -0.0914, 0.0404
+    bone.head[:] = 0.0000, -0.0921, 0.0158
+    bone.tail[:] = 0.0000, -0.0914, 0.0404
     bone.roll = 0.0000
     bone.use_connect = True
     bone.parent = arm.edit_bones[bones['chin']]
@@ -1469,15 +1497,15 @@ def create_sample(obj):
     bone.parent = arm.edit_bones[bones['cheek.T.R.001']]
     bones['nose.R'] = bone.name
     bone = arm.edit_bones.new('tongue.002')
-    bone.head[:] = 0.0004, -0.0406, 0.0584
-    bone.tail[:] = 0.0004, -0.0178, 0.0464
+    bone.head[:] = 0.0000, -0.0406, 0.0584
+    bone.tail[:] = 0.0000, -0.0178, 0.0464
     bone.roll = 0.0000
     bone.use_connect = True
     bone.parent = arm.edit_bones[bones['tongue.001']]
     bones['tongue.002'] = bone.name
     bone = arm.edit_bones.new('nose.003')
-    bone.head[:] = 0.0004, -0.1118, 0.0739
-    bone.tail[:] = 0.0004, -0.1019, 0.0733
+    bone.head[:] = 0.0000, -0.1118, 0.0739
+    bone.tail[:] = 0.0000, -0.1019, 0.0733
     bone.roll = 0.0000
     bone.use_connect = True
     bone.parent = arm.edit_bones[bones['nose.002']]
@@ -1540,21 +1568,21 @@ def create_sample(obj):
     bones['temple.R'] = bone.name
     bone = arm.edit_bones.new('nose.L.001')
     bone.head[:] = 0.0118, -0.0966, 0.0757
-    bone.tail[:] = 0.0004, -0.1193, 0.0771
+    bone.tail[:] = 0.0000, -0.1193, 0.0771
     bone.roll = 0.1070
     bone.use_connect = True
     bone.parent = arm.edit_bones[bones['nose.L']]
     bones['nose.L.001'] = bone.name
     bone = arm.edit_bones.new('nose.R.001')
     bone.head[:] = -0.0118, -0.0966, 0.0757
-    bone.tail[:] = -0.0004, -0.1193, 0.0771
+    bone.tail[:] = -0.0000, -0.1193, 0.0771
     bone.roll = -0.1070
     bone.use_connect = True
     bone.parent = arm.edit_bones[bones['nose.R']]
     bones['nose.R.001'] = bone.name
     bone = arm.edit_bones.new('nose.004')
-    bone.head[:] = 0.0004, -0.1019, 0.0733
-    bone.tail[:] = 0.0004, -0.1014, 0.0633
+    bone.head[:] = 0.0000, -0.1019, 0.0733
+    bone.tail[:] = 0.0000, -0.1014, 0.0633
     bone.roll = 0.0000
     bone.use_connect = True
     bone.parent = arm.edit_bones[bones['nose.003']]
@@ -2414,10 +2442,9 @@ def create_sample(obj):
         bone.select_tail = True
         arm.edit_bones.active = bone
 
-
 def create_square_widget(rig, bone_name, size=1.0, bone_transform_name=None):
     obj = create_widget(rig, bone_name, bone_transform_name)
-    if obj != None:
+    if obj is not None:
         verts = [
             (  0.5 * size, -2.9802322387695312e-08 * size,  0.5 * size ), 
             ( -0.5 * size, -2.9802322387695312e-08 * size,  0.5 * size ), 

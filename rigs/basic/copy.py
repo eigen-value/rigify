@@ -45,14 +45,14 @@ class Rig:
         bpy.ops.object.mode_set(mode = 'OBJECT')
         rig = self.obj
         pb = rig.pose.bones
-        groups = {'Extra': 'THEME04'}
+        groups = {'Tweaks': 'THEME08'}
 
         for g in groups:
             if g not in rig.pose.bone_groups.keys():
                 bg = rig.pose.bone_groups.new(g)
                 bg.color_set = groups[g]
 
-        pb[bone].bone_group = rig.pose.bone_groups['Extra']
+        pb[bone].bone_group = rig.pose.bone_groups['Tweaks']
 
     def generate(self):
         """ Generate the rig.

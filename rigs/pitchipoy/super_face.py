@@ -978,23 +978,41 @@ class Rig:
         bpy.ops.object.mode_set(mode = 'OBJECT')
         rig = self.obj
         pb = rig.pose.bones
-        groups = {'Face Primary': 'THEME03', 'Face Secondary': 'THEME04'}
+        groups = {'Face': 'THEME11', 'Face Primary': 'THEME01', 'Face Secondary': 'THEME09'}
 
         for g in groups:
             if g not in rig.pose.bone_groups.keys():
                 bg = rig.pose.bone_groups.new(g)
                 bg.color_set = groups[g]
 
-        # Face Primary
+        # Face
         ctrls=[]
         for group in bones['ctrls']:
-            ctrls += bones['ctrls'][group]
+            if group != 'eyes':
+                ctrls += bones['ctrls'][group]
         for ctrl in ctrls:
-            pb[ctrl].bone_group = rig.pose.bone_groups['Face Primary']
+            pb[ctrl].bone_group = rig.pose.bone_groups['Face']
+
+        # eyes
+        if 'eyes' in bones['ctrls']:
+            for b in bones['ctrls']['eyes']:
+                if 'master' in b:
+                    pb[b].bone_group = rig.pose.bone_groups['Face']
+                elif ('.L' in b) or ('.R' in b):
+                    pb[b].bone_group = rig.pose.bone_groups['Face Secondary']
+                else:
+                    pb[b].bone_group = rig.pose.bone_groups['Face Primary']
+
         # Face Secondary
         tweaks = bones['tweaks']['all']
         for twk in tweaks:
-            pb[twk].bone_group = rig.pose.bone_groups['Face Secondary']
+            layer = pb[twk].bone.layers[:].index(True)
+            if layer == 0:
+                pb[twk].bone_group = rig.pose.bone_groups['Face']
+            elif layer == 1:
+                pb[twk].bone_group = rig.pose.bone_groups['Face Primary']
+            elif layer == 2:
+                pb[twk].bone_group = rig.pose.bone_groups['Face Secondary']
 
     def generate(self):
         

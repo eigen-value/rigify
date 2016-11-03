@@ -622,7 +622,7 @@ class Rig:
         bpy.ops.object.mode_set(mode = 'OBJECT')
         rig = self.obj
         pb = rig.pose.bones
-        groups = {'Tweaks': 'THEME08', 'Torso': 'THEME03', 'Upper Body': 'THEME09'}
+        groups = {'Tweaks': 'THEME08', 'Torso': 'THEME03', 'Upper Body': 'THEME09', 'Upper Spine': 'THEME02'}
 
         for g in groups:
             if g not in rig.pose.bone_groups.keys():
@@ -630,15 +630,18 @@ class Rig:
                 bg.color_set = groups[g]
 
         # tweaks group
-        controls =  [ bones['neck']['ctrl'],  bones['neck']['ctrl_neck'] ]
-        controls += [ bones['chest']['ctrl'], bones['hips']['ctrl']      ]
-        #controls += [ bones['pivot']['ctrl'] ]
+        controls = [bones['neck']['ctrl'],  bones['neck']['ctrl_neck']]
+        controls += [bones['chest']['ctrl']]
+        hips_controls = [bones['hips']['ctrl']]
 
         if 'tail' in bones.keys():
-            controls += [ bones['tail']['ctrl'] ]
+            hips_controls += [ bones['tail']['ctrl'] ]
+
+        for ctrl in hips_controls:
+            pb[ctrl].bone_group = rig.pose.bone_groups['Torso']
 
         for ctrl in controls:
-            pb[ctrl].bone_group = rig.pose.bone_groups['Torso']
+            pb[ctrl].bone_group = rig.pose.bone_groups['Upper Spine']
 
         pb[bones['pivot']['ctrl']].bone_group = rig.pose.bone_groups['Upper Body']
 
