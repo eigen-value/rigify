@@ -1085,7 +1085,7 @@ class Rig:
         bpy.ops.object.mode_set(mode = 'OBJECT')
         rig = self.obj
         pb = rig.pose.bones
-        groups = {'Tweaks': 'THEME08', 'FK': 'THEME04'}
+        groups = {'Tweaks': 'THEME14', 'FK': 'THEME04'}
 
         for g in groups:
             if g not in rig.pose.bone_groups.keys():
