@@ -1101,7 +1101,8 @@ class Rig:
 
 
         controls =  bones['chain']['ctrl']
-        controls += [bones['pivot']['ctrl']]
+        if 'pivot' in bones.keys():
+            controls += [bones['pivot']['ctrl']]
         #
         # if 'tail' in bones.keys():
         #     controls += [ bones['tail']['ctrl'] ]
