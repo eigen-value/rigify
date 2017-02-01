@@ -96,7 +96,7 @@ class Rig:
             # Create control widget
             create_bone_widget(self.obj, bone)
 
-            self.bone_grouping(bone)
+            #self.bone_grouping(bone)
 
 
 def add_parameters(params):

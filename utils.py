@@ -24,6 +24,7 @@ import importlib
 import math
 import random
 import time
+import re
 from mathutils import Vector, Matrix
 from rna_prop_ui import rna_idprop_ui_prop_get
 
@@ -57,6 +58,23 @@ class MetarigError(Exception):
 #=======================================================================
 # Name manipulation
 #=======================================================================
+
+def strip_trailing_number(s):
+    m = re.search(r'\.(\d{3})$', s)
+    return s[0:-4] if m else s
+
+
+def unique_name(collection, base_name):
+    base_name = strip_trailing_number(base_name)
+    count = 1
+    name = base_name
+
+    while collection.get(name):
+        name = "%s.%03d" % (base_name, count)
+        count += 1
+    return name
+
+
 def org_name(name):
     """ Returns the name with ORG_PREFIX stripped from it.
     """
@@ -135,6 +153,7 @@ def new_bone(obj, bone_name):
     else:
         raise MetarigError("Can't add new bone '%s' outside of edit mode" % bone_name)
 
+
 def copy_bone_simple(obj, bone_name, assign_name=''):
     """ Makes a copy of the given bone in the given armature object.
         but only copies head, tail positions and roll. Does not
@@ -163,6 +182,7 @@ def copy_bone_simple(obj, bone_name, assign_name=''):
         return bone_name_2
     else:
         raise MetarigError("Cannot copy bones outside of edit mode")
+
 
 def copy_bone(obj, bone_name, assign_name=''):
     """ Makes a copy of the given bone in the given armature object.

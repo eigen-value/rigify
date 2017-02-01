@@ -23,6 +23,7 @@ from bpy.props import StringProperty
 
 from .utils import get_rig_type, MetarigError
 from .utils import write_metarig, write_widget
+from .utils import unique_name
 from . import rig_lists
 from . import generate
 
@@ -121,14 +122,231 @@ class DATA_PT_rigify_layer_names(bpy.types.Panel):
                 else:
                     col.label(text="Bottom Row:")
             if (i % 8) == 0:
-                col = layout.column(align=True)
-            row = col.row()
-            row.prop(arm, "layers", index=i, text="", toggle=True)
-            split = row.split(percentage=0.8)
-            split.prop(rigify_layer, "name",  text="Layer %d" % (i + 1))
-            split.prop(rigify_layer, "row",   text="")
+                col = layout.column()
+            row = col.row(align=True)
+            icon = 'RESTRICT_VIEW_OFF' if arm.layers[i] else 'RESTRICT_VIEW_ON'
+            row.prop(arm, "layers", index=i, text="", toggle=True, icon=icon)
+            #row.prop(arm, "layers", index=i, text="Layer %d" % (i + 1), toggle=True, icon=icon)
+            row.prop(rigify_layer, "name", text="")
+            row.prop(rigify_layer, "row", text="UI Row")
+            icon = 'RADIOBUT_ON' if rigify_layer.set else 'RADIOBUT_OFF'
+            row.prop(rigify_layer, "set", text="", toggle=True, icon=icon)
+            row.prop(rigify_layer, "group", text="Bone Group")
 
-            #split.prop(rigify_layer, "column", text="")  
+            #split.prop(rigify_layer, "column", text="")
+        col = layout.column()
+        col.label(text="Reserved:")
+        reserved_names = {28:'Root',29:'DEF',30:'MCH',31:'ORG'}
+        for i in range(28,32):
+            row = col.row(align= True)
+            icon = 'RESTRICT_VIEW_OFF' if arm.layers[i] else 'RESTRICT_VIEW_ON'
+            row.prop(arm, "layers", index=i, text="", toggle=True, icon=icon)
+            row.label(text=reserved_names[i])
+
+
+class DATA_OT_rigify_add_bone_groups(bpy.types.Operator):
+    bl_idname = "armature.rigify_add_bone_groups"
+    bl_label = "Rigify Add Standard Bone Groups"
+
+    @classmethod
+    def poll(cls, context):
+        if not context.armature:
+            return False
+        return True
+
+    def execute(self, context):
+        obj = context.object
+        armature = obj.data
+        if not hasattr(armature, 'rigify_colors'):
+            return {'FINISHED'}
+
+        groups = ['Face', 'Face Primary', 'Face Secondary', 'FK', 'IK', 'Tweaks', 'Torso', 'Upper Body', 'Upper Spine']
+        themes = {'Face': 'THEME11', 'Face Primary': 'THEME01', 'Face Secondary': 'THEME09',
+                  'FK': 'THEME04', 'IK': 'THEME01', 'Tweaks': 'THEME14',
+                  'Torso': 'THEME03', 'Upper Body': 'THEME09', 'Upper Spine': 'THEME02'}
+
+        for g in groups:
+            armature.rigify_colors.add()
+            armature.rigify_colors[-1].name = g
+            id = int(themes[g][-2:]) - 1
+            armature.rigify_colors[-1].normal = bpy.context.user_preferences.themes[0].bone_color_sets[id].normal
+            armature.rigify_colors[-1].select = bpy.context.user_preferences.themes[0].bone_color_sets[id].select
+            armature.rigify_colors[-1].active = bpy.context.user_preferences.themes[0].bone_color_sets[id].active
+
+        return {'FINISHED'}
+
+
+class DATA_OT_rigify_use_standard_colors(bpy.types.Operator):
+    bl_idname = "armature.rigify_use_standard_colors"
+    bl_label = "Rigify Use active/select colors from current theme"
+
+    @classmethod
+    def poll(cls, context):
+        if not context.armature:
+            return False
+        return True
+
+    def execute(selfself, context):
+        obj = context.object
+        armature = obj.data
+        if not hasattr(armature, 'rigify_colors'):
+            return {'FINISHED'}
+
+        current_theme = bpy.context.user_preferences.themes.items()[0][0]
+        theme = bpy.context.user_preferences.themes[current_theme]
+
+        for col in armature.rigify_colors:
+            col.select = theme.view_3d.bone_pose
+            col.active = theme.view_3d.bone_pose_active
+
+        return {'FINISHED'}
+
+
+class DATA_OT_rigify_bone_group_add(bpy.types.Operator):
+    bl_idname = "armature.rigify_bone_group_add"
+    bl_label = "Rigify Add Bone Group color set"
+
+    @classmethod
+    def poll(cls, context):
+        if not context.armature:
+            return False
+        return True
+
+    def execute(self, context):
+        obj = context.object
+        armature = obj.data
+
+        if hasattr(armature, 'rigify_colors'):
+            armature.rigify_colors.add()
+            armature.rigify_colors[-1].name = unique_name(armature.rigify_colors, 'Group')
+
+            current_theme = bpy.context.user_preferences.themes.items()[0][0]
+            theme = bpy.context.user_preferences.themes[current_theme]
+
+            armature.rigify_colors[-1].normal = theme.view_3d.wire
+            armature.rigify_colors[-1].normal.hsv = theme.view_3d.wire.hsv
+            armature.rigify_colors[-1].select = theme.view_3d.bone_pose
+            armature.rigify_colors[-1].select.hsv = theme.view_3d.bone_pose.hsv
+            armature.rigify_colors[-1].active = theme.view_3d.bone_pose_active
+            armature.rigify_colors[-1].active.hsv = theme.view_3d.bone_pose_active.hsv
+
+        return {'FINISHED'}
+
+
+class DATA_OT_rigify_bone_group_remove(bpy.types.Operator):
+    bl_idname = "armature.rigify_bone_group_remove"
+    bl_label = "Rigify Remove Bone Group color set"
+
+    idx = bpy.props.IntProperty()
+
+    @classmethod
+    def poll(cls, context):
+        if not context.armature:
+            return False
+        return True
+
+    def execute(self, context):
+        obj = context.object
+        obj.data.rigify_colors.remove(self.idx)
+
+        # set layers references to 0
+        for l in obj.data.rigify_layers:
+            if l.group == self.idx + 1:
+                l.group = 0
+            elif l.group > self.idx + 1:
+                l.group -= 1
+
+        return {'FINISHED'}
+
+
+class DATA_OT_rigify_bone_group_remove_all(bpy.types.Operator):
+    bl_idname = "armature.rigify_bone_group_remove_all"
+    bl_label = "Rigify Remove All Bone Groups"
+
+    @classmethod
+    def poll(cls, context):
+        if not context.armature:
+            return False
+        return True
+
+    def execute(self, context):
+        obj = context.object
+
+        for i, col in enumerate(obj.data.rigify_colors):
+            obj.data.rigify_colors.remove(0)
+            # set layers references to 0
+            for l in obj.data.rigify_layers:
+                if l.group == i + 1:
+                    l.group = 0
+
+        return {'FINISHED'}
+
+
+class DATA_UL_rigify_bone_groups(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        row = layout.row(align=True)
+        row = row.split(percentage=0.1)
+        row.label(text=str(index+1))
+        row = row.split(percentage=0.7)
+        row.prop(item, "name", text='', emboss=False)
+        row = row.row(align=True)
+        icon = 'LOCKED' if item.standard_colors_lock else 'UNLOCKED'
+        #row.prop(item, "standard_colors_lock", text='', icon=icon)
+        row.prop(item, "normal", text='')
+        row2 = row.row(align=True)
+        row2.prop(item, "select", text='')
+        row2.prop(item, "active", text='')
+        #row2.enabled = not item.standard_colors_lock
+        row2.enabled = not bpy.context.object.data.rigify_colors_lock
+
+
+class DATA_PT_rigify_bone_groups_specials(bpy.types.Menu):
+    bl_label = 'Rigify Bone Groups Specials'
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator('armature.rigify_bone_group_remove_all')
+
+
+class DATA_PT_rigify_bone_groups(bpy.types.Panel):
+    bl_label = "Rigify Bone Groups"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        if not context.armature:
+            return False
+        return True
+
+    def draw(self, context):
+        obj = context.object
+        armature = obj.data
+        color_sets = obj.data.rigify_colors
+        idx = obj.data.rigify_colors_index
+
+        layout = self.layout
+        row = layout.row()
+        row.operator("armature.rigify_use_standard_colors", icon='FILE_REFRESH', text='')
+        row = row.row(align=True)
+        row.prop(bpy.context.user_preferences.themes[0].view_3d, 'bone_pose', text='')
+        row.prop(bpy.context.user_preferences.themes[0].view_3d, 'bone_pose_active', text='')
+        #row.enabled = False
+        row = layout.row(align=True)
+        icon = 'LOCKED' if armature.rigify_colors_lock else 'UNLOCKED'
+        row.prop(armature, 'rigify_colors_lock', text = 'Lock select/active colors', icon=icon)
+        row = layout.row()
+        row.template_list("DATA_UL_rigify_bone_groups", "", obj.data, "rigify_colors", obj.data, "rigify_colors_index")
+
+        col = row.column(align=True)
+        col.operator("armature.rigify_bone_group_add", icon='ZOOMIN', text="")
+        col.operator("armature.rigify_bone_group_remove", icon='ZOOMOUT', text="").idx = obj.data.rigify_colors_index
+        col.menu("DATA_PT_rigify_bone_groups_specials", icon='DOWNARROW_HLT', text="")
+        row = layout.row()
+        row.operator("armature.rigify_add_bone_groups", text="Add Standard")
 
 
 class BONE_PT_rigify_buttons(bpy.types.Panel):
@@ -412,6 +630,14 @@ class EncodeWidget(bpy.types.Operator):
 
 def register():
     bpy.utils.register_class(DATA_PT_rigify_layer_names)
+    bpy.utils.register_class(DATA_OT_rigify_add_bone_groups)
+    bpy.utils.register_class(DATA_OT_rigify_use_standard_colors)
+    bpy.utils.register_class(DATA_OT_rigify_bone_group_add)
+    bpy.utils.register_class(DATA_OT_rigify_bone_group_remove)
+    bpy.utils.register_class(DATA_OT_rigify_bone_group_remove_all)
+    bpy.utils.register_class(DATA_UL_rigify_bone_groups)
+    bpy.utils.register_class(DATA_PT_rigify_bone_groups_specials)
+    bpy.utils.register_class(DATA_PT_rigify_bone_groups)
     bpy.utils.register_class(DATA_PT_rigify_buttons)
     bpy.utils.register_class(BONE_PT_rigify_buttons)
     bpy.utils.register_class(VIEW3D_PT_tools_rigify_dev)
@@ -426,6 +652,14 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(DATA_PT_rigify_layer_names)
+    bpy.utils.unregister_class(DATA_OT_rigify_add_bone_groups)
+    bpy.utils.unregister_class(DATA_OT_rigify_use_standard_colors)
+    bpy.utils.unregister_class(DATA_OT_rigify_bone_group_add)
+    bpy.utils.unregister_class(DATA_OT_rigify_bone_group_remove)
+    bpy.utils.unregister_class(DATA_OT_rigify_bone_group_remove_all)
+    bpy.utils.unregister_class(DATA_UL_rigify_bone_groups)
+    bpy.utils.unregister_class(DATA_PT_rigify_bone_groups_specials)
+    bpy.utils.unregister_class(DATA_PT_rigify_bone_groups)
     bpy.utils.unregister_class(DATA_PT_rigify_buttons)
     bpy.utils.unregister_class(BONE_PT_rigify_buttons)
     bpy.utils.unregister_class(VIEW3D_PT_tools_rigify_dev)

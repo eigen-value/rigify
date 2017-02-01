@@ -184,7 +184,7 @@ class Rig:
             i += 1
 
         # Grouping
-        self.bone_grouping(ctrl)
+        #self.bone_grouping(ctrl)
 
         # Create control widget
         w = create_widget(self.obj, ctrl)

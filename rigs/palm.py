@@ -123,7 +123,7 @@ class Rig:
             eb[d].parent = eb[b]
 
         # Bone Grouping
-        self.bone_grouping(ctrl)
+        #self.bone_grouping(ctrl)
 
         # Constraints
         bpy.ops.object.mode_set(mode='OBJECT')

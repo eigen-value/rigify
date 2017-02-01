@@ -711,7 +711,7 @@ class Rig:
         if 'tail' in bones.keys():
             controls += [ bones['tail']['ctrl'] ]
 
-        self.bone_grouping(bones)
+        #self.bone_grouping(bones)
 
         # Create UI
         controls_string = ", ".join(["'" + x + "'" for x in controls])

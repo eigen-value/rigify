@@ -100,7 +100,7 @@ class Rig:
             else:
                 create_bone_widget(self.obj, bone)
 
-            self.bone_grouping(bone)
+            #self.bone_grouping(bone)
 
 def add_parameters(params):
     """ Add the parameters of this rig type to the

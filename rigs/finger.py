@@ -290,7 +290,7 @@ class Rig:
         controls['control'] = bones
         controls['main_ctrl'] = [ctrl]
 
-        self.bone_grouping(controls)
+        #self.bone_grouping(controls)
 
     def generate(self):
         """ Generate the rig.

@@ -258,10 +258,10 @@ def generate_rig(context, metarig):
     obj.data.edit_bones[root_bone].roll = 0
     bpy.ops.object.mode_set(mode='OBJECT')
     obj.data.bones[root_bone].layers = ROOT_LAYER
-    if 'Root' not in obj.pose.bone_groups.keys():
-        root_group = obj.pose.bone_groups.new('Root')
-        root_group.color_set = 'THEME11'
-    obj.pose.bones[root_bone].bone_group = obj.pose.bone_groups['Root']
+    # if 'Root' not in obj.pose.bone_groups.keys():
+    #     root_group = obj.pose.bone_groups.new('Root')
+    #     root_group.color_set = 'THEME11'
+    # obj.pose.bones[root_bone].bone_group = obj.pose.bone_groups['Root']
     # Put the rig_name in the armature custom properties
     rna_idprop_ui_prop_get(obj.data, "rig_id", create=True)
     obj.data["rig_id"] = rig_id
@@ -433,12 +433,74 @@ def generate_rig(context, metarig):
     # Run UI script
     exec(script.as_string(), {})
 
+    # Create Selection Sets
+    create_selection_sets(obj, metarig)
+
+    # Create Bone Groups
+    create_bone_groups(obj, metarig)
+
     t.tick("The rest: ")
     #----------------------------------
     # Deconfigure
     bpy.ops.object.mode_set(mode='OBJECT')
     metarig.data.pose_position = rest_backup
     obj.data.pose_position = 'POSE'
+
+
+def create_selection_sets(obj, metarig):
+
+    if not hasattr(obj.data, 'rigify_layers') or not hasattr(obj, 'selection_sets'):
+        return
+
+    bpy.context.scene.objects.active = obj
+    obj.select = True
+    metarig.select = False
+    pbones = obj.pose.bones
+
+    for i, name in enumerate(metarig.data.rigify_layers.keys()):
+        if name == '' or not metarig.data.rigify_layers[i].set:
+            continue
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.armature.select_all(action='DESELECT')
+        for b in pbones:
+            if b.bone.layers[i]:
+                b.bone.select = True
+        bpy.ops.object.mode_set(mode='POSE')
+        bpy.ops.pose.selection_set_add()
+        obj.selection_sets[-1].name = name
+
+
+def create_bone_groups(obj, metarig):
+
+    bpy.ops.object.mode_set(mode='OBJECT')
+    pb = obj.pose.bones
+    layers = metarig.data.rigify_layers
+    groups = metarig.data.rigify_colors
+
+    # Create BGs
+    for l in layers:
+        if l.group == 0:
+            continue
+        g_id = l.group - 1
+        name = groups[g_id].name
+        if name not in obj.pose.bone_groups.keys():
+            bg = obj.pose.bone_groups.new(name)
+            bg.color_set = 'CUSTOM'
+            bg.colors.normal = groups[g_id].normal
+            bg.colors.select = groups[g_id].select
+            bg.colors.active = groups[g_id].active
+
+    for b in pb:
+        try:
+            layer_index = b.bone.layers[:].index(True)
+        except ValueError:
+            continue
+        if layer_index > len(layers) - 1:   # bone is on reserved layers
+            continue
+        g_id = layers[layer_index].group - 1
+        if g_id >= 0:
+            name = groups[g_id].name
+            b.bone_group = obj.pose.bone_groups[name]
 
 
 def get_bone_rigs(obj, bone_name, halt_on_missing=False):
@@ -483,6 +545,7 @@ def param_name(param_name, rig_type):
     """ Get the actual parameter name, sans-rig-type.
     """
     return param_name[len(rig_type) + 1:]
+
 
 def isPitchipoy(metarig):
     """ Returns True if metarig is type pitchipoy.

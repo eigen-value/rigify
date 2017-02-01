@@ -1032,7 +1032,7 @@ class Rig:
             for bone in group:
                 all_ctrls.append( bone )
 
-        self.bone_grouping(all_bones)
+        #self.bone_grouping(all_bones)
 
         controls_string = ", ".join(["'" + x + "'" for x in all_ctrls])
         return [ script % (

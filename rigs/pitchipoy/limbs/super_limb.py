@@ -561,6 +561,7 @@ class Rig:
         for fk_bone in bones['fk']['ctrl']:
             pb[fk_bone].bone_group = rig.pose.bone_groups['FK']
 
+
     def generate( self ):
         bpy.ops.object.mode_set(mode ='EDIT')
         eb = self.obj.data.edit_bones
@@ -585,7 +586,7 @@ class Rig:
 
         bones = self.create_terminal( self.limb_type, bones )
 
-        self.bone_grouping(bones)
+        #self.bone_grouping(bones)
 
         return [ create_script( bones, self.limb_type ) ]
 

@@ -759,7 +759,7 @@ class Rig:
             script = create_script( bones, 'arm' )
             script += extra_script % (controls_string, bones['ik']['mch_hand'][0], 'IK_follow', 'root/parent', 'root/parent')
 
-            self.bone_grouping(bones)
+            #self.bone_grouping(bones)
 
             return [ script ]
 

@@ -491,7 +491,7 @@ class Rig:
 
         controls_string = ", ".join(["'" + x + "'" for x in controls[1:]])
 
-        self.bone_grouping(controls)
+        #self.bone_grouping(controls)
 
         return [script % (controls[0], controls_string)]
 

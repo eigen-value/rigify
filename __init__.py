@@ -48,13 +48,52 @@ class RigifyName(bpy.types.PropertyGroup):
     name = bpy.props.StringProperty()
 
 
+class RigifyColorSet(bpy.types.PropertyGroup):
+    name = bpy.props.StringProperty(name="Color Set", default=" ")
+    active = bpy.props.FloatVectorProperty(
+                                   name="object_color",
+                                   subtype='COLOR',
+                                   default=(1.0, 1.0, 1.0),
+                                   min=0.0, max=1.0,
+                                   description="color picker"
+                                   )
+    normal = bpy.props.FloatVectorProperty(
+                                   name="object_color",
+                                   subtype='COLOR',
+                                   default=(1.0, 1.0, 1.0),
+                                   min=0.0, max=1.0,
+                                   description="color picker"
+                                   )
+    select = bpy.props.FloatVectorProperty(
+                                   name="object_color",
+                                   subtype='COLOR',
+                                   default=(1.0, 1.0, 1.0),
+                                   min=0.0, max=1.0,
+                                   description="color picker"
+                                   )
+    standard_colors_lock = bpy.props.BoolProperty(default=True)
+
+
 class RigifyParameters(bpy.types.PropertyGroup):
     name = bpy.props.StringProperty()
 
 
 class RigifyArmatureLayer(bpy.types.PropertyGroup):
+
+    def get_group(self):
+        return self['group_prop']
+
+    def set_group(self, value):
+        arm = bpy.context.object.data
+        if value > len(arm.rigify_colors):
+            self['group_prop'] = len(arm.rigify_colors)
+        else:
+            self['group_prop'] = value
+
     name = bpy.props.StringProperty(name="Layer Name", default=" ")
     row = bpy.props.IntProperty(name="Layer Row", default=1, min=1, max=32)
+    set = bpy.props.BoolProperty(name="Selection Set", default=False)
+    group = bpy.props.IntProperty(name="Bone Group", default=0, min=0, max=32, get=get_group, set=set_group)
 
 
 ##### REGISTER #####
@@ -66,11 +105,16 @@ def register():
     bpy.utils.register_class(RigifyName)
     bpy.utils.register_class(RigifyParameters)
     bpy.utils.register_class(RigifyArmatureLayer)
+    bpy.utils.register_class(RigifyColorSet)
 
     bpy.types.PoseBone.rigify_type = bpy.props.StringProperty(name="Rigify Type", description="Rig type for this bone")
     bpy.types.PoseBone.rigify_parameters = bpy.props.PointerProperty(type=RigifyParameters)
 
     bpy.types.Armature.rigify_layers = bpy.props.CollectionProperty(type=RigifyArmatureLayer)
+
+    bpy.types.Armature.rigify_colors = bpy.props.CollectionProperty(type=RigifyColorSet)
+    bpy.types.Armature.rigify_colors_index = bpy.props.IntProperty(default=-1)
+    bpy.types.Armature.rigify_colors_lock = bpy.props.BoolProperty(default=True)
 
     IDStore = bpy.types.WindowManager
     IDStore.rigify_collection = bpy.props.EnumProperty(items=rig_lists.col_enum_list, default="All", name="Rigify Active Collection", description="The selected rig collection")

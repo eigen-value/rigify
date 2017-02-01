@@ -309,7 +309,7 @@ class Rig:
         # Create tip control widget
         create_circle_widget(self.obj, tip_name, radius=0.3, head_tail=0.0)
 
-        self.bone_grouping(ctrl_chain)
+        #self.bone_grouping(ctrl_chain)
 
         # Create UI
         controls_string = ", ".join(

@@ -1185,7 +1185,7 @@ class Rig:
         # if 'tail' in bones.keys():
         #     controls += [ bones['tail']['ctrl'] ]
 
-        self.bone_grouping(bones)
+        #self.bone_grouping(bones)
 
         return  #TODO modify what follows
 

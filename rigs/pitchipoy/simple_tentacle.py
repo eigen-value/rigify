@@ -234,7 +234,7 @@ class Rig:
         self.make_constraints(all_bones)
         self.parent_bones(all_bones)
 
-        self.bone_grouping(all_bones)
+        #self.bone_grouping(all_bones)
 
 def add_parameters(params):
     """ Add the parameters of this rig type to the
