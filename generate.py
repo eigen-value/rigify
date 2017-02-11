@@ -449,8 +449,11 @@ def generate_rig(context, metarig):
 
 def create_selection_sets(obj, metarig):
 
-    if not hasattr(obj.data, 'rigify_layers') or not hasattr(obj, 'selection_sets'):
+    # Check if selection sets addon is installed
+    if 'bone_selection_groups' not in bpy.context.user_preferences.addons:
         return
+
+    bpy.ops.object.mode_set(mode='POSE')
 
     bpy.context.scene.objects.active = obj
     obj.select = True
@@ -460,13 +463,14 @@ def create_selection_sets(obj, metarig):
     for i, name in enumerate(metarig.data.rigify_layers.keys()):
         if name == '' or not metarig.data.rigify_layers[i].set:
             continue
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.armature.select_all(action='DESELECT')
+
+        bpy.ops.pose.select_all(action='DESELECT')
         for b in pbones:
             if b.bone.layers[i]:
                 b.bone.select = True
-        bpy.ops.object.mode_set(mode='POSE')
-        bpy.ops.pose.selection_set_add()
+
+        #bpy.ops.pose.selection_set_add()
+        obj.selection_sets.add()
         obj.selection_sets[-1].name = name
 
 
