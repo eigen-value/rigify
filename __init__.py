@@ -100,7 +100,10 @@ class RigifyParameters(bpy.types.PropertyGroup):
 class RigifyArmatureLayer(bpy.types.PropertyGroup):
 
     def get_group(self):
-        return self['group_prop']
+        if 'group_prop' in self.keys():
+            return self['group_prop']
+        else:
+            return 0
 
     def set_group(self, value):
         arm = bpy.context.object.data
