@@ -162,75 +162,14 @@ class RigifyName(bpy.types.PropertyGroup):
     name = bpy.props.StringProperty()
 
 
-class RigifyColorSet(bpy.types.PropertyGroup):
-    name = bpy.props.StringProperty(name="Color Set", default=" ")
-    active = bpy.props.FloatVectorProperty(
-                                   name="object_color",
-                                   subtype='COLOR',
-                                   default=(1.0, 1.0, 1.0),
-                                   min=0.0, max=1.0,
-                                   description="color picker"
-                                   )
-    normal = bpy.props.FloatVectorProperty(
-                                   name="object_color",
-                                   subtype='COLOR',
-                                   default=(1.0, 1.0, 1.0),
-                                   min=0.0, max=1.0,
-                                   description="color picker"
-                                   )
-    select = bpy.props.FloatVectorProperty(
-                                   name="object_color",
-                                   subtype='COLOR',
-                                   default=(1.0, 1.0, 1.0),
-                                   min=0.0, max=1.0,
-                                   description="color picker"
-                                   )
-    standard_colors_lock = bpy.props.BoolProperty(default=True)
-
-
-class RigifySelectionColors(bpy.types.PropertyGroup):
-
-    select = bpy.props.FloatVectorProperty(
-                                           name="object_color",
-                                           subtype='COLOR',
-                                           default=(0.314, 0.784, 1.0),
-                                           min=0.0, max=1.0,
-                                           description="color picker"
-                                           )
-
-    active = bpy.props.FloatVectorProperty(
-                                           name="object_color",
-                                           subtype='COLOR',
-                                           default=(0.549, 1.0, 1.0),
-                                           min=0.0, max=1.0,
-                                           description="color picker"
-                                           )
-
-
 class RigifyParameters(bpy.types.PropertyGroup):
     name = bpy.props.StringProperty()
 
 
 class RigifyArmatureLayer(bpy.types.PropertyGroup):
-
-    def get_group(self):
-        if 'group_prop' in self.keys():
-            return self['group_prop']
-        else:
-            return 0
-
-    def set_group(self, value):
-        arm = bpy.context.object.data
-        if value > len(arm.rigify_colors):
-            self['group_prop'] = len(arm.rigify_colors)
-        else:
-            self['group_prop'] = value
-
     name = bpy.props.StringProperty(name="Layer Name", default=" ")
-    row = bpy.props.IntProperty(name="Layer Row", default=1, min=1, max=32, description='UI row for this layer')
-    set = bpy.props.BoolProperty(name="Selection Set", default=False, description='Add Selection Set for this layer')
-    group = bpy.props.IntProperty(name="Bone Group", default=0, min=0, max=32,
-                                  get=get_group, set=set_group, description='Assign Bone Group to this layer')
+    row = bpy.props.IntProperty(name="Layer Row", default=1, min=1, max=32)
+
 
 ##### REGISTER #####
 
@@ -240,9 +179,6 @@ def register():
 
     bpy.utils.register_class(RigifyName)
     bpy.utils.register_class(RigifyParameters)
-
-    bpy.utils.register_class(RigifyColorSet)
-    bpy.utils.register_class(RigifySelectionColors)
     bpy.utils.register_class(RigifyArmatureLayer)
     bpy.utils.register_class(RigifyPreferences)
     bpy.types.Armature.rigify_layers = bpy.props.CollectionProperty(type=RigifyArmatureLayer)
@@ -250,33 +186,7 @@ def register():
     bpy.types.PoseBone.rigify_type = bpy.props.StringProperty(name="Rigify Type", description="Rig type for this bone")
     bpy.types.PoseBone.rigify_parameters = bpy.props.PointerProperty(type=RigifyParameters)
 
-    bpy.types.Armature.rigify_colors = bpy.props.CollectionProperty(type=RigifyColorSet)
-
-    bpy.types.Armature.rigify_selection_colors = bpy.props.PointerProperty(type=RigifySelectionColors)
-
-    bpy.types.Armature.rigify_colors_index = bpy.props.IntProperty(default=-1)
-    bpy.types.Armature.rigify_colors_lock = bpy.props.BoolProperty(default=True)
-    bpy.types.Armature.rigify_theme_to_add = bpy.props.EnumProperty(items=(('THEME01', 'THEME01', ''),
-                                                                          ('THEME02', 'THEME02', ''),
-                                                                          ('THEME03', 'THEME03', ''),
-                                                                          ('THEME04', 'THEME04', ''),
-                                                                          ('THEME05', 'THEME05', ''),
-                                                                          ('THEME06', 'THEME06', ''),
-                                                                          ('THEME07', 'THEME07', ''),
-                                                                          ('THEME08', 'THEME08', ''),
-                                                                          ('THEME09', 'THEME09', ''),
-                                                                          ('THEME10', 'THEME10', ''),
-                                                                          ('THEME11', 'THEME11', ''),
-                                                                          ('THEME12', 'THEME12', ''),
-                                                                          ('THEME13', 'THEME13', ''),
-                                                                          ('THEME14', 'THEME14', ''),
-                                                                          ('THEME15', 'THEME15', ''),
-                                                                          ('THEME16', 'THEME16', ''),
-                                                                          ('THEME17', 'THEME17', ''),
-                                                                          ('THEME18', 'THEME18', ''),
-                                                                          ('THEME19', 'THEME19', ''),
-                                                                          ('THEME20', 'THEME20', '')
-                                                                           ), name='Theme')
+    bpy.types.Armature.rigify_layers = bpy.props.CollectionProperty(type=RigifyArmatureLayer)
 
     IDStore = bpy.types.WindowManager
     IDStore.rigify_collection = bpy.props.EnumProperty(items=rig_lists.col_enum_list, default="All",
@@ -310,10 +220,6 @@ def unregister():
 
     bpy.utils.unregister_class(RigifyName)
     bpy.utils.unregister_class(RigifyParameters)
-
-    bpy.utils.unregister_class(RigifyColorSet)
-    bpy.utils.unregister_class(RigifySelectionColors)
-
     bpy.utils.unregister_class(RigifyArmatureLayer)
     bpy.utils.unregister_class(RigifyPreferences)
 
