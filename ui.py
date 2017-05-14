@@ -169,7 +169,7 @@ class BONE_PT_rigify_buttons(bpy.types.Panel):
 
         for r in rig_lists.rig_list:
             rig = get_rig_type(r)
-            if hasattr(rig, 'INTERFACE') and rig.INTERFACE:
+            if hasattr(rig, 'IMPLEMENTATION') and rig.IMPLEMENTATION:
                 continue
             # collection = r.split('.')[0]  # UNUSED
             if collection_name == "All":

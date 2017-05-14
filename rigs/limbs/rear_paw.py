@@ -4,8 +4,8 @@ from .paw import Rig as pawRig
 from .paw import parameters_ui
 from .paw import add_parameters
 
-INTERFACE = True    # Include and set True if Rig is just an interface for a wrapper class
-                    # add_parameters and parameters_ui are unused for interface classes
+IMPLEMENTATION = True    # Include and set True if Rig is just an implementation for a wrapper class
+                    # add_parameters and parameters_ui are unused for implementation classes
 
 
 class Rig(pawRig):

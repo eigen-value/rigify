@@ -23,8 +23,8 @@ if is_selected( controls ):
         layout.prop( pose_bones[ ctrl ], '["%s"]', slider = True )
 """
 
-INTERFACE = True    # Include and set True if Rig is just an interface for a wrapper class
-                    # add_parameters and parameters_ui are unused for interface classes
+IMPLEMENTATION = True    # Include and set True if Rig is just an implementation for a wrapper class
+                    # add_parameters and parameters_ui are unused for implementation classes
 
 
 class Rig:
