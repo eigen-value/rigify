@@ -595,8 +595,8 @@ class Rig:
         pb_parent = pb[parent]
 
         # Create ik/fk switch property
-        pb_parent['IK/FK'] = 0.0
-        prop = rna_idprop_ui_prop_get(pb_parent, 'IK/FK', create=True)
+        pb_parent['IK_FK'] = 0.0
+        prop = rna_idprop_ui_prop_get(pb_parent, 'IK_FK', create=True)
         prop["min"] = 0.0
         prop["max"] = 1.0
         prop["soft_min"] = 0.0
@@ -1034,7 +1034,7 @@ class Rig:
 
             # Find IK/FK switch property
             pb = self.obj.pose.bones
-            prop = rna_idprop_ui_prop_get( pb[bones['fk']['ctrl'][-1]], 'IK/FK' )
+            prop = rna_idprop_ui_prop_get( pb[bones['fk']['ctrl'][-1]], 'IK_FK' )
 
             # Modify rotation mode for ik and tweak controls
             pb[bones['ik']['ctrl']['limb']].rotation_mode = 'ZXY'
