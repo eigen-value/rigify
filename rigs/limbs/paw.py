@@ -703,8 +703,6 @@ class Rig:
             eb[ctrl].roll = 0
         v = eb[org_bones[-1]].tail - eb[org_bones[-2]].head
         eb[ctrl].length = Vector((v[0], v[1], 0)).length
-        # eb[ctrl].length = eb[org_bones[-1]].length
-
 
         # make mch toe bone
         toes_mch = get_bone_name(org_bones[3], 'mch')

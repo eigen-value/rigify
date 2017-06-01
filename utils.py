@@ -145,26 +145,10 @@ def insert_before_lr(name, text):
         return name + text
 
 
-def upgradeMetarigTypes(metarig, revert=False):
-    """Replaces rigify_type properties from old versions with their current names
-
-    :param revert: revert types to previous version (if old type available)
-    """
-
-    if revert:
-        vals = list(outdated_types.values())
-        rig_defs = {v: k for k, v in outdated_types.items() if vals.count(v) == 1}
-    else:
-        rig_defs = outdated_types
-
-    for bone in metarig.pose.bones:
-        rg_type = bone.rigify_type
-        if rg_type in rig_defs:
-            bone.rigify_type = rig_defs[rg_type]
-
 #=======================
 # Bone manipulation
 #=======================
+
 def new_bone(obj, bone_name):
     """ Adds a new bone to the given armature object.
         Returns the resulting bone's name.
@@ -485,6 +469,7 @@ def create_cube_widget(rig, bone_name, radius=0.5, bone_transform_name=None):
         mesh.from_pydata(verts, edges, [])
         mesh.update()
 
+
 def create_chain_widget(rig, bone_name, radius=0.5, invert=False, bone_transform_name=None):
     """Creates a basic chain widget
     """
@@ -500,6 +485,7 @@ def create_chain_widget(rig, bone_name, radius=0.5, invert=False, bone_transform
         mesh = obj.data
         mesh.from_pydata(verts, edges, [])
         mesh.update()
+
 
 def create_sphere_widget(rig, bone_name, bone_transform_name=None):
     """ Creates a basic sphere widget, three pependicular overlapping circles.
