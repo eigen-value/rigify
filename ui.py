@@ -24,7 +24,6 @@ from bpy.props import StringProperty
 from .utils import get_rig_type, MetarigError
 from .utils import write_metarig, write_widget
 from .utils import unique_name
-from .utils import outdated_types
 from . import rig_lists
 from . import generate
 

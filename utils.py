@@ -41,17 +41,6 @@ WGT_LAYERS = [x == 19 for x in range(0, 20)]  # Widgets go on the last scene lay
 
 MODULE_NAME = "rigify"  # Windows/Mac blender is weird, so __package__ doesn't work
 
-outdated_types = {"pitchipoy.limbs.super_limb": "limbs.super_limb",
-                  "pitchipoy.limbs.super_arm": "limbs.super_limb",
-                  "pitchipoy.limbs.super_leg": "limbs.super_limb",
-                  "pitchipoy.limbs.super_front_paw": "limbs.super_limb",
-                  "pitchipoy.limbs.super_rear_paw": "limbs.super_limb",
-                  "pitchipoy.super_torso_turbo": "spines.super_spine",
-                  "pitchipoy.simple_tentacle": "limbs.simple_tentacle",
-                  "pitchipoy.super_face": "faces.super_face",
-                  "pitchipoy.super_palm": "limbs.super_palm",
-                  "palm": "limbs.super_palm",
-                  "basic.copy": "basic.super_copy"}
 
 #=======================================================================
 # Error handling
