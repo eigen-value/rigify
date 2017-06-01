@@ -46,13 +46,11 @@ class DATA_PT_rigify_buttons(bpy.types.Panel):
         id_store = C.window_manager
 
         if obj.mode in {'POSE', 'OBJECT'}:
-
+            layout.operator("pose.rigify_generate", text="Generate")
             WARNING = "Warning: Some features may change after generation"
             show_warning = False
-            show_update_metarig = False
 
             check_props = ['IK_follow', 'root/parent', 'FK_limb_follow', 'IK_Stretch']
-
             for obj in bpy.data.objects:
                 if type(obj.data) != bpy.types.Armature:
                     continue
@@ -60,20 +58,9 @@ class DATA_PT_rigify_buttons(bpy.types.Panel):
                     if bone.bone.layers[30] and (list(set(bone.keys()) & set(check_props))):
                         show_warning = True
                         break
-                for b in obj.pose.bones:
-                    if b.rigify_type in outdated_types.keys():
-                        show_update_metarig = True
-                        break
 
             if show_warning:
                 layout.label(text=WARNING, icon='ERROR')
-
-            layout.operator("pose.rigify_generate", text="Generate Rig")
-
-            if show_update_metarig:
-                layout.label(text="Some bones have old legacy rigify_type. Click to upgrade", icon='ERROR')
-                layout.operator("pose.rigify_upgrade_types", text="Upgrade Metarig")
-
 
         elif obj.mode == 'EDIT':
             # Build types list
