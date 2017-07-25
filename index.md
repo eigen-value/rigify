@@ -7,6 +7,6 @@ title: Rigify
 
 [About](./about.md)
 
-![Logo](/img/2001_6.png)
+![Logo](/img/Generate_Adv_Opt.png)
 
-Text can be **bold**, _italic_, or ~~strikethrough~~.
+Site is Under Construction **bold**, _italic_, or ~~strikethrough~~.
