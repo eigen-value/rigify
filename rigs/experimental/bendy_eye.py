@@ -46,34 +46,64 @@ class Rig(ChainyRig):
             raise MetarigError("Exactly 2 disconnected chains (lids) must be parented to main bone")
 
         eyelids_bones_dict = {'top': [], 'bottom': []}
-        self.lid_len = len(edit_bones[lid_bones[0]].children_recursive) + 1
+        self.lid_len = len(connected_children_names(self.obj, lid_bones[0])) + 1
 
         # Check both have same length
         for lid in lid_bones:
-            if len(edit_bones[lid].children_recursive) != self.lid_len - 1:
+            if len(connected_children_names(self.obj, lid)) != self.lid_len - 1:
                 raise MetarigError("All lip chains must be the same length")
 
-        l_b_head_positions = [edit_bones[name].head for name in lid_bones]
-        head_sum = l_b_head_positions[0]
-        for h in l_b_head_positions[1:]:
-            head_sum = head_sum + h
-        eyelids_center = head_sum / 4
+        if edit_bones[lid_bones[0]].tail.z < edit_bones[lid_bones[1]].tail.z:
+            eyelids_bones_dict['top'].append(lid_bones[1])
+            eyelids_bones_dict['bottom'].append(lid_bones[0])
+        else:
+            eyelids_bones_dict['top'].append(lid_bones[0])
+            eyelids_bones_dict['bottom'].append(lid_bones[1])
 
-        for l_b in lid_bones:
-            head = edit_bones[l_b].head
-            if (head - eyelids_center).z < 0:
-                eyelids_bones_dict['bottom'].append(l_b)
-            elif (head - eyelids_center).magnitude > 0:
-                eyelids_bones_dict['top'].append(l_b)
-            else:
-                raise MetarigError("Badly drawn eyelids on %s" % self.bones['org'][0])
-
-        if not (len(eyelids_bones_dict['top']) == len(eyelids_bones_dict['bottom']) == 2):
+        if not (len(eyelids_bones_dict['top']) == len(eyelids_bones_dict['bottom']) == 1):
             raise MetarigError("Badly drawn eyelids on %s" % self.bones['org'][0])
 
         return eyelids_bones_dict
 
     def create_mch(self):
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
+
+        self.bones['eye_mch'] = dict()
+        self.bones['eye_mch']['eyelid_top'] = []
+        self.bones['eye_mch']['eyelid_bottom'] = []
+        self.bones['eye_mch']['eye_master'] = ''
+        self.bones['eye_mch']['eye_master_tip'] = ''
+
+        main_bone_name = strip_org(self.bones['org'][0])
+        eye_mch_name = make_mechanism_name(main_bone_name)
+        eye_mch_name = copy_bone(self.obj, self.bones['org'][0], eye_mch_name)
+        self.bones['eye_mch']['eye_master'] = eye_mch_name
+
+        eye_tip_mch_name = copy_bone(self.obj, self.bones['org'][0], eye_mch_name)
+        self.bones['eye_mch']['eye_master_tip'] = eye_tip_mch_name
+        edit_bones[eye_tip_mch_name].head[:] = edit_bones[eye_tip_mch_name].tail
+        tip_len = edit_bones[eye_mch_name].length * 0.25
+        edit_bones[eye_tip_mch_name].tail[:] = edit_bones[eye_tip_mch_name].head + Vector((0, 0, tip_len))
+
+        # top lid
+        top_lid_chain = [self.lid_bones['top'][0]]
+        top_lid_chain.extend(connected_children_names(self.obj, top_lid_chain[0]))
+        for l_b in top_lid_chain:
+            lid_m_name = copy_bone(self.obj, self.bones['org'][0], eye_mch_name)
+            edit_bones[lid_m_name].tail = edit_bones[l_b].head
+            self.bones['eye_mch']['eyelid_top'].append(lid_m_name)
+
+        # bottom lid
+        bottom_lid_chain = [self.lid_bones['bottom'][0]]
+        bottom_lid_chain.extend(connected_children_names(self.obj, bottom_lid_chain[0]))
+        for l_b in bottom_lid_chain:
+            lid_m_name = copy_bone(self.obj, self.bones['org'][0], eye_mch_name)
+            edit_bones[lid_m_name].tail = edit_bones[l_b].head
+            self.bones['eye_mch']['eyelid_bottom'].append(lid_m_name)
+
+        # create remaining subchain mch-s
         super().create_mch()
 
     def create_def(self):
@@ -89,5 +119,13 @@ class Rig(ChainyRig):
         super().parent_bones()
 
     def generate(self):
-        return super().generate()
+        self.create_mch()
+        self.create_def()
+        self.create_controls()
+        self.parent_bones()
+
+        self.make_constraints()
+        self.create_widgets()
+
+        return [""]
 
