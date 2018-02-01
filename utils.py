@@ -1339,45 +1339,92 @@ def make_constraints_from_string(owner, target, subtarget, fstring):
     :return:
     """
 
-    # regex is (type)(influence*)(space-space*)(use_offset*)(head_tail*)
-
     separator = '#'
+    cns_blocks = fstring.split(separator)
 
+    transform_type = ['CL', 'CR', 'CS', 'CT']
+    track_type = ['DT', 'TT']
+
+    for cns in cns_blocks:
+
+        if cns[0:2] in transform_type:
+            make_transform_constraint_from_string(owner, target, subtarget, cns)
+
+        if cns[0:2] in track_type:
+            make_track_constraint_from_string(owner, target, subtarget, cns)
+
+
+def make_transform_constraint_from_string(owner, target, subtarget, fstring):
+
+    # regex is (type)(influence*)(space-space*)(use_offset*)(head_tail*)
     regex = '^(CL|CR|CS|CT)([0-9]*\.?[0-9]+)*([LWP]{2})*(O*)([0-9]*\.?[0-9]+)*$'
 
     constraint_type = {'CL': 'COPY_LOCATION', 'CR': 'COPY_ROTATION', 'CS': 'COPY_SCALE', 'CT': 'COPY_TRANSFORMS'}
     constraint_space = {'L': 'LOCAL', 'W': 'WORLD', 'P': 'POSE'}
 
-    cns_blocks = fstring.split(separator)
+    re_object = re.match(regex, fstring)
+    if not re_object:
+        return
+    else:
+        cns_props = re_object.groups()
 
-    for cns in cns_blocks:
-        re_object = re.match(regex, cns)
-        if not re_object:
-            continue
-        else:
-            cns_props = re_object.groups()
-        cns_type = constraint_type[cns_props[0]]
-        const = owner.constraints.new(cns_type)
-        const.target = target
-        const.subtarget = subtarget
-        if cns_type == 'COPY_LOCATION':
-            const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
-            const.target_space = constraint_space[cns_props[2][0]] if bool(cns_props[2]) else "LOCAL"
-            const.owner_space = constraint_space[cns_props[2][1]] if bool(cns_props[2]) else "LOCAL"
-            const.use_offset = bool(cns_props[3])
-            const.head_tail = float(cns_props[4]) if bool(cns_props[4]) else 0.0
-        if cns_type == 'COPY_ROTATION':
-            const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
-            const.target_space = constraint_space[cns_props[2][0]] if bool(cns_props[2]) else "LOCAL"
-            const.owner_space = constraint_space[cns_props[2][1]] if bool(cns_props[2]) else "LOCAL"
-            const.use_offset = bool(cns_props[3])
-        if cns_type == 'COPY_SCALE':
-            const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
-            const.target_space = constraint_space[cns_props[2][0]] if bool(cns_props[2]) else "LOCAL"
-            const.owner_space = constraint_space[cns_props[2][1]] if bool(cns_props[2]) else "LOCAL"
-            const.use_offset = bool(cns_props[3])
-        if cns_type == 'COPY_TRANSFORMS':
-            const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
-            const.target_space = constraint_space[cns_props[2][0]] if bool(cns_props[2]) else "LOCAL"
-            const.owner_space = constraint_space[cns_props[2][1]] if bool(cns_props[2]) else "LOCAL"
-            const.head_tail = float(cns_props[4]) if bool(cns_props[4]) else 0.0
+    cns_type = constraint_type[cns_props[0]]
+    const = owner.constraints.new(cns_type)
+    const.target = target
+    const.subtarget = subtarget
+
+    if cns_type == 'COPY_LOCATION':
+        const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
+        const.target_space = constraint_space[cns_props[2][0]] if bool(cns_props[2]) else "LOCAL"
+        const.owner_space = constraint_space[cns_props[2][1]] if bool(cns_props[2]) else "LOCAL"
+        const.use_offset = bool(cns_props[3])
+        const.head_tail = float(cns_props[4]) if bool(cns_props[4]) else 0.0
+    if cns_type == 'COPY_ROTATION':
+        const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
+        const.target_space = constraint_space[cns_props[2][0]] if bool(cns_props[2]) else "LOCAL"
+        const.owner_space = constraint_space[cns_props[2][1]] if bool(cns_props[2]) else "LOCAL"
+        const.use_offset = bool(cns_props[3])
+    if cns_type == 'COPY_SCALE':
+        const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
+        const.target_space = constraint_space[cns_props[2][0]] if bool(cns_props[2]) else "LOCAL"
+        const.owner_space = constraint_space[cns_props[2][1]] if bool(cns_props[2]) else "LOCAL"
+        const.use_offset = bool(cns_props[3])
+    if cns_type == 'COPY_TRANSFORMS':
+        const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
+        const.target_space = constraint_space[cns_props[2][0]] if bool(cns_props[2]) else "LOCAL"
+        const.owner_space = constraint_space[cns_props[2][1]] if bool(cns_props[2]) else "LOCAL"
+        const.head_tail = float(cns_props[4]) if bool(cns_props[4]) else 0.0
+
+
+def make_track_constraint_from_string(owner, target, subtarget, fstring):
+
+    # regex is (type)(influence*)(track_axis*)(space-space*)(head_tail*)
+    regex = '^(TT|DT)([0-9]*\.?[0-9]+)*(-*[XYZ])*([LWP]{2})*([0-9]*\.?[0-9]+)*$'
+
+    constraint_type = {'DT': 'DAMPED_TRACK', 'TT': 'TRACK_TO'}
+    constraint_space = {'L': 'LOCAL', 'W': 'WORLD', 'P': 'POSE'}
+    track_axis = {'X': 'TRACK_X', '-X': 'TRACK_NEGATIVE_X', 'Y': 'TRACK_Y', '-Y': 'TRACK_NEGATIVE_Y',
+                  'Z': 'TRACK_Z', '-Z': 'TRACK_NEGATIVE_Z'}
+
+    re_object = re.match(regex, fstring)
+    if not re_object:
+        return
+    else:
+        cns_props = re_object.groups()
+
+    cns_type = constraint_type[cns_props[0]]
+    const = owner.constraints.new(cns_type)
+    const.target = target
+    const.subtarget = subtarget
+
+    if cns_type == 'DAMPED_TRACK':
+        const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
+        const.track_axis = track_axis[cns_props[2]] if bool(cns_props[2]) else "TRACK_Y"
+        const.head_tail = float(cns_props[4]) if bool(cns_props[4]) else 0.0
+
+    if cns_type == 'TRACK_TO':
+        const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
+        const.track_axis = track_axis[cns_props[2]] if bool(cns_props[2]) else "TRACK_Y"
+        const.target_space = constraint_space[cns_props[3][0]] if bool(cns_props[3]) else "LOCAL"
+        const.owner_space = constraint_space[cns_props[3][1]] if bool(cns_props[3]) else "LOCAL"
+        const.head_tail = float(cns_props[4]) if bool(cns_props[4]) else 0.0
