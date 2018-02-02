@@ -110,7 +110,29 @@ class Rig(ChainyRig):
         super().create_def()
 
     def create_controls(self):
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
+
+        self.bones['eye_ctrl'] = dict()
+
+        eye_ctrl_name = "master_eye"
+        eye_ctrl = copy_bone(self.obj, self.bones['org'][0], eye_ctrl_name)
+        self.bones['eye_ctrl']['master_eye'] = eye_ctrl
+
+        eye_target_name = "eye"
+        eye_target = copy_bone(self.obj, self.bones['org'][0], eye_target_name)
+        self.bones['eye_ctrl']['eye_target'] = eye_target
+        edit_bones[eye_target].head = edit_bones[eye_target].tail + \
+                                      edit_bones[eye_target].y_axis * 5 * edit_bones[eye_target].length
+        target_len = edit_bones[self.bones['org'][0]].length * 0.33
+        edit_bones[eye_target].tail[:] = edit_bones[eye_target].head + Vector((0, 0, target_len))
+
+        # make standard controls
         super().create_controls()
+
+    def parent_bones(self):
+        super().parent_bones()
 
     def make_constraints(self):
 
@@ -140,8 +162,19 @@ class Rig(ChainyRig):
         # make the standard bendy rig constraints
         super().make_constraints()
 
-    def parent_bones(self):
-        super().parent_bones()
+    def create_widgets(self):
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        # master_eye
+        eye_ctrl = self.bones['eye_ctrl']['master_eye']
+        create_circle_widget(self.obj, eye_ctrl)
+
+        # eye target
+        eye_target = self.bones['eye_ctrl']['eye_target']
+        create_eye_widget(self.obj, eye_target)
+
+        super().create_widgets()
 
     def generate(self):
         self.create_mch()

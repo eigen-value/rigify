@@ -137,7 +137,7 @@ class Rig(ChainyRig):
         self.bones['jaw_ctrl']['jaw'] = jaw_ctrl
 
         bpy.ops.object.mode_set(mode='OBJECT')
-        create_jaw_widget(self.obj, jaw_ctrl_name)
+        create_jaw_widget(self.obj, jaw_ctrl)
 
         super().create_controls()
 

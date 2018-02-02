@@ -157,12 +157,31 @@ class ChainyRig(BaseRig):
 
         return ctrl_chain[index]
 
-    def create_widgets(self):
+    def parent_bones(self):
+        """
+        Specify bone parenting
+        :return:
+        """
 
-        bpy.ops.object.mode_set(mode='OBJECT')
-        for chain in self.bones['ctrl']:
-            for ctrl in self.bones['ctrl'][chain]:
-                create_sphere_widget(self.obj, ctrl)
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
+
+        ### PARENT chain MCH-bones ###
+        for subchain in self.bones['mch']:
+            for i, name in enumerate(self.bones['mch'][subchain]):
+                mch_bone = edit_bones[name]
+                parent = self.get_ctrl_by_index(chain=subchain, index=i)
+                if parent:
+                    mch_bone.parent = edit_bones[parent]
+
+        ### PARENT subchain sibling controls ###
+        for chain in self.chains:
+            for subchain in self.chains[chain]:
+                for i, ctrl in enumerate(self.bones['ctrl'][strip_org(subchain)]):
+                    ctrl_bone = edit_bones[ctrl]
+                    parent = self.get_ctrl_by_index(chain=strip_org(chain), index=i)
+                    if parent:
+                        ctrl_bone.parent = edit_bones[parent]
 
     def make_constraints(self):
         """
@@ -194,31 +213,12 @@ class ChainyRig(BaseRig):
                     const.target = self.obj
                     const.subtarget = tail_subtarget
 
-    def parent_bones(self):
-        """
-        Specify bone parenting
-        :return:
-        """
+    def create_widgets(self):
 
-        bpy.ops.object.mode_set(mode='EDIT')
-        edit_bones = self.obj.data.edit_bones
-
-        ### PARENT chain MCH-bones ###
-        for subchain in self.bones['mch']:
-            for i, name in enumerate(self.bones['mch'][subchain]):
-                mch_bone = edit_bones[name]
-                parent = self.get_ctrl_by_index(chain=subchain, index=i)
-                if parent:
-                    mch_bone.parent = edit_bones[parent]
-
-        ### PARENT subchain sibling controls ###
-        for chain in self.chains:
-            for subchain in self.chains[chain]:
-                for i, ctrl in enumerate(self.bones['ctrl'][strip_org(subchain)]):
-                    ctrl_bone = edit_bones[ctrl]
-                    parent = self.get_ctrl_by_index(chain=strip_org(chain), index=i)
-                    if parent:
-                        ctrl_bone.parent = edit_bones[parent]
+        bpy.ops.object.mode_set(mode='OBJECT')
+        for chain in self.bones['ctrl']:
+            for ctrl in self.bones['ctrl'][chain]:
+                create_sphere_widget(self.obj, ctrl)
 
     def generate(self):
 
