@@ -113,6 +113,31 @@ class Rig(ChainyRig):
         super().create_controls()
 
     def make_constraints(self):
+
+        """
+        Make constraints
+        :return:
+        """
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        pose_bones = self.obj.pose.bones
+
+        tip = self.bones['eye_mch']['eye_master_tip']
+        owner = pose_bones[tip]
+        subtarget = self.bones['eye_mch']['eye_master']
+        make_constraints_from_string(owner, self.obj, subtarget, 'CL1.0WW1.0')
+
+        for i, e_m in enumerate(self.bones['eye_mch']['eyelid_top']):
+            owner = pose_bones[e_m]
+            subtarget = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i)
+            make_constraints_from_string(owner, self.obj, subtarget, "DT1.0Y0.0")
+
+        for i, e_m in enumerate(self.bones['eye_mch']['eyelid_bottom']):
+            owner = pose_bones[e_m]
+            subtarget = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i)
+            make_constraints_from_string(owner, self.obj, subtarget, "DT1.0Y0.0")
+
+        # make the standard bendy rig constraints
         super().make_constraints()
 
     def parent_bones(self):
@@ -123,6 +148,8 @@ class Rig(ChainyRig):
         self.create_def()
         self.create_controls()
         self.parent_bones()
+
+        self.control_snapper.aggregate_ctrls()
 
         self.make_constraints()
         self.create_widgets()

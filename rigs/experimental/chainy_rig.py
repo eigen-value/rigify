@@ -147,7 +147,8 @@ class ChainyRig(BaseRig):
         Return ctrl in index position of chain
         :param chain:
         :param index:
-        :return:
+        :return: bone name
+        :rtype: str
         """
 
         ctrl_chain = self.bones['ctrl'][chain]
