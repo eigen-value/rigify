@@ -51,7 +51,7 @@ class Rig(ChainyRig):
         # Check both have same length
         for lid in lid_bones:
             if len(connected_children_names(self.obj, lid)) != self.lid_len - 1:
-                raise MetarigError("All lip chains must be the same length")
+                raise MetarigError("All lid chains must be the same length")
 
         if edit_bones[lid_bones[0]].tail.z < edit_bones[lid_bones[1]].tail.z:
             eyelids_bones_dict['top'].append(lid_bones[1])
@@ -83,9 +83,9 @@ class Rig(ChainyRig):
 
         eye_tip_mch_name = copy_bone(self.obj, self.bones['org'][0], eye_mch_name)
         self.bones['eye_mch']['eye_master_tip'] = eye_tip_mch_name
-        edit_bones[eye_tip_mch_name].head[:] = edit_bones[eye_tip_mch_name].tail
         tip_len = edit_bones[eye_mch_name].length * 0.25
-        edit_bones[eye_tip_mch_name].tail[:] = edit_bones[eye_tip_mch_name].head + Vector((0, 0, tip_len))
+        edit_bones[eye_tip_mch_name].tail = edit_bones[eye_mch_name].tail + tip_len * edit_bones[eye_mch_name].y_axis
+        edit_bones[eye_tip_mch_name].head = edit_bones[eye_mch_name].tail
 
         # top lid
         top_lid_chain = [self.lid_bones['top'][0]]
@@ -116,22 +116,49 @@ class Rig(ChainyRig):
 
         self.bones['eye_ctrl'] = dict()
 
-        eye_ctrl_name = "master_eye"
+        eye_ctrl_name = "master_" + strip_org(self.bones['org'][0])
         eye_ctrl = copy_bone(self.obj, self.bones['org'][0], eye_ctrl_name)
         self.bones['eye_ctrl']['master_eye'] = eye_ctrl
 
-        eye_target_name = "eye"
+        eye_target_name = strip_org(self.bones['org'][0])
         eye_target = copy_bone(self.obj, self.bones['org'][0], eye_target_name)
         self.bones['eye_ctrl']['eye_target'] = eye_target
+
         edit_bones[eye_target].head = edit_bones[eye_target].tail + \
                                       edit_bones[eye_target].y_axis * 5 * edit_bones[eye_target].length
         target_len = edit_bones[self.bones['org'][0]].length * 0.33
-        edit_bones[eye_target].tail[:] = edit_bones[eye_target].head + Vector((0, 0, target_len))
+        edit_bones[eye_target].tail[:] = edit_bones[eye_target].head + target_len * edit_bones[eye_ctrl].y_axis
 
         # make standard controls
         super().create_controls()
 
     def parent_bones(self):
+        """
+        Parent eye bones
+        :return:
+        """
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
+
+        master_ctrl = self.bones['eye_ctrl']['master_eye']
+
+        eye_mchs = []
+        eye_mchs.extend(self.bones['eye_mch']['eyelid_top'])
+        eye_mchs.extend(self.bones['eye_mch']['eyelid_bottom'])
+        eye_mchs.append(self.bones['eye_mch']['eye_master'])
+        eye_mchs.append(self.bones['eye_mch']['eye_master_tip'])
+
+        for mch in eye_mchs:
+            edit_bones[mch].parent = edit_bones[master_ctrl]
+
+        eye_ctrls = []
+        for chain in self.bones['ctrl']:
+            eye_ctrls.extend(self.bones['ctrl'][chain])
+
+        for ctrl in eye_ctrls:
+            edit_bones[ctrl].parent = edit_bones[master_ctrl]
+
         super().parent_bones()
 
     def make_constraints(self):
@@ -159,6 +186,95 @@ class Rig(ChainyRig):
             subtarget = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i)
             make_constraints_from_string(owner, self.obj, subtarget, "DT1.0Y0.0")
 
+        eye_mch_name = pose_bones[self.bones['eye_mch']['eye_master']]
+        subtarget = self.bones['eye_ctrl']['eye_target']
+        make_constraints_from_string(eye_mch_name, self.obj, subtarget, "DT1.0Y0.0")
+
+        if self.lid_len % 2 == 0:
+            i = int(self.lid_len/2)
+            central_ctrl_top = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i)
+            owner = pose_bones[central_ctrl_top]
+            subtarget = tip
+            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
+            central_ctrl_bottom = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i)
+            owner = pose_bones[central_ctrl_bottom]
+            subtarget = tip
+            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
+            influence = 0.6
+            j = 1
+            while True:
+                if i + j == self.lid_len:
+                    break
+
+                ctrl_top_1 = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i+j)
+                owner = pose_bones[ctrl_top_1]
+                subtarget = central_ctrl_top
+                make_constraints_from_string(owner, self.obj, subtarget, "CL%sLL0.0" % influence)
+                ctrl_top_2 = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i-j)
+                owner = pose_bones[ctrl_top_2]
+                subtarget = central_ctrl_top
+                make_constraints_from_string(owner, self.obj, subtarget, "CL%sLL0.0" % influence)
+
+                ctrl_bottom_1 = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i+j)
+                owner = pose_bones[ctrl_bottom_1]
+                subtarget = central_ctrl_bottom
+                make_constraints_from_string(owner, self.obj, subtarget, "CL%sLL0.0" % influence)
+                ctrl_bottom_2 = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i-j)
+                owner = pose_bones[ctrl_bottom_2]
+                subtarget = central_ctrl_bottom
+                make_constraints_from_string(owner, self.obj, subtarget, "CL%sLL0.0" % influence)
+
+                influence -= 0.1
+                j += 1
+
+        else:
+
+            i = int((self.lid_len + 1) / 2)
+            central_ctrl_top_p = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i)
+            owner = pose_bones[central_ctrl_top_p]
+            subtarget = tip
+            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
+            central_ctrl_top_m = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i-1)
+            owner = pose_bones[central_ctrl_top_m]
+            subtarget = tip
+            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
+            central_ctrl_bottom_p = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i)
+            owner = pose_bones[central_ctrl_bottom_p]
+            subtarget = tip
+            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
+            central_ctrl_bottom_m = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i-1)
+            owner = pose_bones[central_ctrl_bottom_m]
+            subtarget = tip
+            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
+
+            influence = 0.6
+            j = 1
+
+            while True:
+                if i + j == self.lid_len:
+                    break
+
+                ctrl_top_1 = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i + j)
+                owner = pose_bones[ctrl_top_1]
+                subtarget = central_ctrl_top_p
+                make_constraints_from_string(owner, self.obj, subtarget, "CL%sLL0.0" % influence)
+                ctrl_top_2 = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i - 1 - j)
+                owner = pose_bones[ctrl_top_2]
+                subtarget = central_ctrl_top_m
+                make_constraints_from_string(owner, self.obj, subtarget, "CL%sLL0.0" % influence)
+
+                ctrl_bottom_1 = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i + j)
+                owner = pose_bones[ctrl_bottom_1]
+                subtarget = central_ctrl_bottom_p
+                make_constraints_from_string(owner, self.obj, subtarget, "CL%sLL0.0" % influence)
+                ctrl_bottom_2 = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i - 1 - j)
+                owner = pose_bones[ctrl_bottom_2]
+                subtarget = central_ctrl_bottom_m
+                make_constraints_from_string(owner, self.obj, subtarget, "CL%sLL0.0" % influence)
+
+                influence -= 0.1
+                j += 1
+
         # make the standard bendy rig constraints
         super().make_constraints()
 
@@ -172,7 +288,7 @@ class Rig(ChainyRig):
 
         # eye target
         eye_target = self.bones['eye_ctrl']['eye_target']
-        create_eye_widget(self.obj, eye_target)
+        create_circle_widget(self.obj, eye_target)
 
         super().create_widgets()
 
@@ -189,3 +305,149 @@ class Rig(ChainyRig):
 
         return [""]
 
+def create_sample(obj):
+    # generated by rigify.utils.write_metarig
+    bpy.ops.object.mode_set(mode='EDIT')
+    arm = obj.data
+
+    bones = {}
+
+    bone = arm.edit_bones.new('eye.L')
+    bone.head[:] = 0.0360, -0.0686, 0.1107
+    bone.tail[:] = 0.0360, -0.0848, 0.1107
+    bone.roll = 0.0000
+    bone.use_connect = False
+    bones['eye.L'] = bone.name
+    bone = arm.edit_bones.new('lid.T.L')
+    bone.head[:] = 0.0515, -0.0692, 0.1104
+    bone.tail[:] = 0.0474, -0.0785, 0.1136
+    bone.roll = 0.1166
+    bone.use_connect = False
+    bone.parent = arm.edit_bones[bones['eye.L']]
+    bones['lid.T.L'] = bone.name
+    bone = arm.edit_bones.new('lid.B.L')
+    bone.head[:] = 0.0237, -0.0826, 0.1058
+    bone.tail[:] = 0.0319, -0.0831, 0.1050
+    bone.roll = -0.1108
+    bone.use_connect = False
+    bone.parent = arm.edit_bones[bones['eye.L']]
+    bones['lid.B.L'] = bone.name
+    bone = arm.edit_bones.new('lid.T.L.001')
+    bone.head[:] = 0.0474, -0.0785, 0.1136
+    bone.tail[:] = 0.0394, -0.0838, 0.1147
+    bone.roll = 0.0791
+    bone.use_connect = True
+    bone.parent = arm.edit_bones[bones['lid.T.L']]
+    bones['lid.T.L.001'] = bone.name
+    bone = arm.edit_bones.new('lid.B.L.001')
+    bone.head[:] = 0.0319, -0.0831, 0.1050
+    bone.tail[:] = 0.0389, -0.0826, 0.1050
+    bone.roll = -0.0207
+    bone.use_connect = True
+    bone.parent = arm.edit_bones[bones['lid.B.L']]
+    bones['lid.B.L.001'] = bone.name
+    bone = arm.edit_bones.new('lid.T.L.002')
+    bone.head[:] = 0.0394, -0.0838, 0.1147
+    bone.tail[:] = 0.0317, -0.0832, 0.1131
+    bone.roll = -0.0356
+    bone.use_connect = True
+    bone.parent = arm.edit_bones[bones['lid.T.L.001']]
+    bones['lid.T.L.002'] = bone.name
+    bone = arm.edit_bones.new('lid.B.L.002')
+    bone.head[:] = 0.0389, -0.0826, 0.1050
+    bone.tail[:] = 0.0472, -0.0781, 0.1068
+    bone.roll = 0.0229
+    bone.use_connect = True
+    bone.parent = arm.edit_bones[bones['lid.B.L.001']]
+    bones['lid.B.L.002'] = bone.name
+    bone = arm.edit_bones.new('lid.T.L.003')
+    bone.head[:] = 0.0317, -0.0832, 0.1131
+    bone.tail[:] = 0.0237, -0.0826, 0.1058
+    bone.roll = 0.0245
+    bone.use_connect = True
+    bone.parent = arm.edit_bones[bones['lid.T.L.002']]
+    bones['lid.T.L.003'] = bone.name
+    bone = arm.edit_bones.new('lid.B.L.003')
+    bone.head[:] = 0.0472, -0.0781, 0.1068
+    bone.tail[:] = 0.0515, -0.0692, 0.1104
+    bone.roll = -0.0147
+    bone.use_connect = True
+    bone.parent = arm.edit_bones[bones['lid.B.L.002']]
+    bones['lid.B.L.003'] = bone.name
+
+    bpy.ops.object.mode_set(mode='OBJECT')
+    pbone = obj.pose.bones[bones['eye.L']]
+    pbone.rigify_type = 'experimental.bendy_eye'
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['lid.T.L']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['lid.B.L']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['lid.T.L.001']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['lid.B.L.001']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['lid.T.L.002']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['lid.B.L.002']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['lid.T.L.003']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['lid.B.L.003']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+
+    bpy.ops.object.mode_set(mode='EDIT')
+    for bone in arm.edit_bones:
+        bone.select = False
+        bone.select_head = False
+        bone.select_tail = False
+    for b in bones:
+        bone = arm.edit_bones[bones[b]]
+        bone.select = True
+        bone.select_head = True
+        bone.select_tail = True
+        arm.edit_bones.active = bone
