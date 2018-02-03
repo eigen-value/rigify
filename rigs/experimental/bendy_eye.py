@@ -92,7 +92,7 @@ class Rig(ChainyRig):
         top_lid_chain.extend(connected_children_names(self.obj, top_lid_chain[0]))
         for l_b in top_lid_chain:
             lid_m_name = copy_bone(self.obj, self.bones['org'][0], eye_mch_name)
-            edit_bones[lid_m_name].tail = edit_bones[l_b].head
+            edit_bones[lid_m_name].tail = edit_bones[l_b].tail
             self.bones['eye_mch']['eyelid_top'].append(lid_m_name)
 
         # bottom lid
@@ -100,7 +100,7 @@ class Rig(ChainyRig):
         bottom_lid_chain.extend(connected_children_names(self.obj, bottom_lid_chain[0]))
         for l_b in bottom_lid_chain:
             lid_m_name = copy_bone(self.obj, self.bones['org'][0], eye_mch_name)
-            edit_bones[lid_m_name].tail = edit_bones[l_b].head
+            edit_bones[lid_m_name].tail = edit_bones[l_b].tail
             self.bones['eye_mch']['eyelid_bottom'].append(lid_m_name)
 
         # create remaining subchain mch-s
@@ -132,6 +132,25 @@ class Rig(ChainyRig):
         # make standard controls
         super().create_controls()
 
+        if self.lid_len % 2 != 0:
+            mid_index = int((self.lid_len + 1)/2)
+
+            top_chain = strip_org(self.lid_bones['top'][0])
+            top_lid_master = copy_bone(self.obj, self.bones['ctrl'][top_chain][0])
+            edit_bones[top_lid_master].length *= 1.5
+            self.bones['eye_ctrl']['top_lid_master'] = top_lid_master
+            mid_bone_1 = edit_bones[self.bones['ctrl'][top_chain][mid_index - 1]]
+            mid_bone_2 = edit_bones[self.bones['ctrl'][top_chain][mid_index]]
+            put_bone(self.obj, top_lid_master, (mid_bone_1.head + mid_bone_2.head)/2)
+
+            bottom_chain = strip_org(self.lid_bones['bottom'][0])
+            bottom_lid_master = copy_bone(self.obj, self.bones['ctrl'][bottom_chain][0])
+            edit_bones[bottom_lid_master].length *= 1.5
+            self.bones['eye_ctrl']['bottom_lid_master'] = bottom_lid_master
+            mid_bone_1 = edit_bones[self.bones['ctrl'][bottom_chain][mid_index - 1]]
+            mid_bone_2 = edit_bones[self.bones['ctrl'][bottom_chain][mid_index]]
+            put_bone(self.obj, bottom_lid_master, (mid_bone_1.head + mid_bone_2.head)/2)
+
     def parent_bones(self):
         """
         Parent eye bones
@@ -161,6 +180,23 @@ class Rig(ChainyRig):
 
         super().parent_bones()
 
+        # adjust parenting
+        top_lid_chain = strip_org(self.lid_bones['top'][0])
+
+        for i, lid_def in enumerate(self.bones['def'][top_lid_chain]):
+            if i == 0:
+                edit_bones[lid_def].parent = edit_bones[self.bones['eye_mch']['eyelid_bottom'][-1]]
+            else:
+                edit_bones[lid_def].parent = edit_bones[self.bones['eye_mch']['eyelid_top'][i-1]]
+
+        bottom_lid_chain = strip_org(self.lid_bones['bottom'][0])
+
+        for i, lid_def in enumerate(self.bones['def'][bottom_lid_chain]):
+            if i == 0:
+                edit_bones[lid_def].parent = edit_bones[self.bones['eye_mch']['eyelid_top'][-1]]
+            else:
+                edit_bones[lid_def].parent = edit_bones[self.bones['eye_mch']['eyelid_bottom'][i-1]]
+
     def make_constraints(self):
 
         """
@@ -178,12 +214,12 @@ class Rig(ChainyRig):
 
         for i, e_m in enumerate(self.bones['eye_mch']['eyelid_top']):
             owner = pose_bones[e_m]
-            subtarget = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i)
+            subtarget = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i+1)
             make_constraints_from_string(owner, self.obj, subtarget, "DT1.0Y0.0")
 
         for i, e_m in enumerate(self.bones['eye_mch']['eyelid_bottom']):
             owner = pose_bones[e_m]
-            subtarget = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i)
+            subtarget = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i+1)
             make_constraints_from_string(owner, self.obj, subtarget, "DT1.0Y0.0")
 
         eye_mch_name = pose_bones[self.bones['eye_mch']['eye_master']]
@@ -229,26 +265,19 @@ class Rig(ChainyRig):
 
         else:
 
-            i = int((self.lid_len + 1) / 2)
-            central_ctrl_top_p = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i)
-            owner = pose_bones[central_ctrl_top_p]
+            top_lid_master = self.bones['eye_ctrl']['top_lid_master']
+            owner = pose_bones[top_lid_master]
             subtarget = tip
             make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
-            central_ctrl_top_m = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i-1)
-            owner = pose_bones[central_ctrl_top_m]
-            subtarget = tip
-            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
-            central_ctrl_bottom_p = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i)
-            owner = pose_bones[central_ctrl_bottom_p]
-            subtarget = tip
-            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
-            central_ctrl_bottom_m = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i-1)
-            owner = pose_bones[central_ctrl_bottom_m]
+
+            bottom_lid_master = self.bones['eye_ctrl']['bottom_lid_master']
+            owner = pose_bones[bottom_lid_master]
             subtarget = tip
             make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
 
             influence = 0.6
-            j = 1
+            i = int((self.lid_len + 1)/2)
+            j = 0
 
             while True:
                 if i + j == self.lid_len:
@@ -256,27 +285,46 @@ class Rig(ChainyRig):
 
                 ctrl_top_1 = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i + j)
                 owner = pose_bones[ctrl_top_1]
-                subtarget = central_ctrl_top_p
+                subtarget = top_lid_master
                 make_constraints_from_string(owner, self.obj, subtarget, "CL%sLL0.0" % influence)
                 ctrl_top_2 = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i - 1 - j)
                 owner = pose_bones[ctrl_top_2]
-                subtarget = central_ctrl_top_m
                 make_constraints_from_string(owner, self.obj, subtarget, "CL%sLL0.0" % influence)
 
                 ctrl_bottom_1 = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i + j)
                 owner = pose_bones[ctrl_bottom_1]
-                subtarget = central_ctrl_bottom_p
+                subtarget = bottom_lid_master
                 make_constraints_from_string(owner, self.obj, subtarget, "CL%sLL0.0" % influence)
                 ctrl_bottom_2 = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i - 1 - j)
                 owner = pose_bones[ctrl_bottom_2]
-                subtarget = central_ctrl_bottom_m
                 make_constraints_from_string(owner, self.obj, subtarget, "CL%sLL0.0" % influence)
 
                 influence -= 0.1
                 j += 1
 
-        # make the standard bendy rig constraints
+        # make the standard chainy rig constraints
         super().make_constraints()
+
+        # adjust constraints
+        top_lid_chain = strip_org(self.lid_bones['top'][0])
+
+        for i, lid_def in enumerate(self.bones['def'][top_lid_chain]):
+            for cns in pose_bones[lid_def].constraints:
+                if cns.type != "DAMPED_TRACK" and cns.type != "STRETCH_TO":
+                    pose_bones[lid_def].constraints.remove(cns)
+                else:
+                    cns.subtarget = self.bones['eye_mch']['eyelid_top'][i]
+                    cns.head_tail = 1.0
+
+        bottom_lid_chain = strip_org(self.lid_bones['bottom'][0])
+
+        for i, lid_def in enumerate(self.bones['def'][bottom_lid_chain]):
+            for cns in pose_bones[lid_def].constraints:
+                if cns.type != "DAMPED_TRACK" and cns.type != "STRETCH_TO":
+                    pose_bones[lid_def].constraints.remove(cns)
+                else:
+                    cns.subtarget = self.bones['eye_mch']['eyelid_bottom'][i]
+                    cns.head_tail = 1.0
 
     def create_widgets(self):
 
@@ -289,6 +337,16 @@ class Rig(ChainyRig):
         # eye target
         eye_target = self.bones['eye_ctrl']['eye_target']
         create_circle_widget(self.obj, eye_target)
+
+        # top lid master
+        if 'top_lid_master' in self.bones['eye_ctrl']:
+            top_lid_master = self.bones['eye_ctrl']['top_lid_master']
+            create_sphere_widget(self.obj, top_lid_master)
+
+        # bottom lid master
+        if 'bottom_lid_master' in self.bones['eye_ctrl']:
+            bottom_lid_master = self.bones['eye_ctrl']['bottom_lid_master']
+            create_sphere_widget(self.obj, bottom_lid_master)
 
         super().create_widgets()
 
