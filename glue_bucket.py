@@ -1,5 +1,5 @@
 import bpy
-from ...utils import MetarigError, make_constraints_from_string
+from utils import MetarigError, make_constraints_from_string
 
 
 class GlueBucket:
@@ -10,18 +10,14 @@ class GlueBucket:
 
     POSITION_RELATIVE_ERROR = 1e-3  # error below which two positions are considered equal (relative to bone len)
 
-    def __init__(self, obj, bones=None):
+    def __init__(self, obj):
 
         self.obj = obj
 
-        if bones:
-            self.bones = bones
-            self.base_bone = self.bones['org'][0]
-        else:
-            bones = dict()
-            bones['ctrl'] = dict()
-            bones['ctrl']['all_ctrls'] = self.get_all_armature_ctrls()
-            self.base_bone = 'root'
+        self.base_bone = 'root'
+        self.bones = dict()
+        self.bones['ctrl'] = dict()
+        self.bones['ctrl']['all_ctrls'] = self.get_all_armature_ctrls()
 
         self.bones['glue'] = self.get_glue_bones()
 
@@ -39,7 +35,7 @@ class GlueBucket:
         for pose_bone in pose_bones:
             if pose_bone.rigify_glue != "":
                 if pose_bone.bone.children or pose_bone.bone.parent.name != self.base_bone:
-                    raise MetarigError("ERROR: Glue bones must parented to main bone and have no children!")
+                    raise MetarigError("ERROR on %s: Glue bones must have no parent or children!" % pose_bone.name)
                 else:
                     glue_bones.append(pose_bone.name)
 
@@ -107,6 +103,8 @@ class GlueBucket:
             tail_ctrls = self.get_ctrls_by_position(pose_bones[glue_bone].tail)
             if not tail_ctrls:
                 continue
+
+            # todo solve for tail_ctrls and head_ctrl len > 1
             owner_pb = pose_bones[tail_ctrls[0]]
             make_constraints_from_string(owner_pb, target=self.obj, subtarget=head_ctrls[0],
                                          fstring=pose_bones[glue_bone].rigify_glue)

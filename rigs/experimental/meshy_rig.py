@@ -4,7 +4,6 @@
 #########################################################################
 
 from .control_snapper import ControlSnapper
-from .glue_bucket import GlueBucket
 from .chainy_rig import ChainyRig
 
 
@@ -14,7 +13,6 @@ class MeshyRig(ChainyRig):
         super().__init__(obj, bone_name, params)
 
         self.control_snapper = ControlSnapper(self.obj, self.bones)
-        self.glue_bucket = GlueBucket(self.obj, self.bones)
 
     def generate(self):
 
@@ -26,9 +24,6 @@ class MeshyRig(ChainyRig):
         self.control_snapper.aggregate_ctrls()
 
         self.make_constraints()
-
-        self.glue_bucket.make_glue_constraints()
-
         self.create_widgets()
 
         return [""]
