@@ -34,7 +34,7 @@ from .utils import copy_attributes
 from .utils import gamma_correct
 from .rig_ui_template import UI_SLIDERS, layers_ui, UI_REGISTER
 
-from glue_bucket import GlueBucket
+from .glue_bucket import GlueBucket
 
 RIG_MODULE = "rigs"
 ORG_LAYER = [n == 31 for n in range(0, 32)]  # Armature layer that original bones should be moved to.

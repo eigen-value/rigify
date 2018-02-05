@@ -1,5 +1,5 @@
 import bpy
-from utils import MetarigError, make_constraints_from_string
+from .utils import MetarigError, make_constraints_from_string
 
 
 class GlueBucket:
