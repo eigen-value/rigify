@@ -126,7 +126,7 @@ class RigifyPreferences(AddonPreferences):
 
         custom_rigs_folder = bpy.context.user_preferences.addons['rigify'].preferences.custom_rigs_folder
 
-        if custom_rigs_folder == "":
+        if custom_rigs_folder == "" and 'external' in rig_lists.rigs_dict:
             rig_lists.rigs_dict.pop('external')
             return
 
