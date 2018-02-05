@@ -631,7 +631,7 @@ class BONE_PT_rigify_buttons(bpy.types.Panel):
         # Rig type parameters / Rig type non-exist alert
         if rig_name != "":
             try:
-                if rig_name in rig_lists.rigs_dict['external']['rig_list']:
+                if 'external' in rig_lists.rigs_dict and rig_name in rig_lists.rigs_dict['external']['rig_list']:
                     custom_rigs_folder = bpy.context.user_preferences.addons['rigify'].preferences.custom_rigs_folder
                     rig = get_rig_type(rig_name, custom_rigs_folder)
                 else:
