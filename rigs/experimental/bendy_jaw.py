@@ -135,6 +135,7 @@ class Rig(ChainyRig):
 
         jaw_ctrl = copy_bone(self.obj, self.main_mch, jaw_ctrl_name)
         self.bones['jaw_ctrl']['jaw'] = jaw_ctrl
+        edit_bones[jaw_ctrl].use_connect = False
 
         bpy.ops.object.mode_set(mode='OBJECT')
         create_jaw_widget(self.obj, jaw_ctrl)
