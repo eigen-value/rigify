@@ -272,6 +272,10 @@ class Rig(ChainyRig):
                 lip_ctrl = self.get_ctrl_by_index(t_lip_2, i+1)
                 edit_bones[lip_ctrl].parent = edit_bones[jaw_masters[i + 1]]
 
+        # parenting what's connected to main jaw mch to jaw ctrl
+        for child in edit_bones[self.main_mch].children:
+            child.parent = edit_bones[self.bones['jaw_ctrl']['jaw']]
+
         super().parent_bones()
 
     def generate(self):
