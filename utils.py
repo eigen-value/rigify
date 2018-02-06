@@ -1344,6 +1344,7 @@ def make_constraints_from_string(owner, target, subtarget, fstring):
 
     transform_type = ['CL', 'CR', 'CS', 'CT']
     track_type = ['DT', 'TT']
+    relationship_type = ['PA']
 
     for cns in cns_blocks:
 
@@ -1352,6 +1353,9 @@ def make_constraints_from_string(owner, target, subtarget, fstring):
 
         if cns[0:2] in track_type:
             make_track_constraint_from_string(owner, target, subtarget, cns)
+
+        if cns[0:2] in relationship_type:
+            make_relation_constraint_from_string(owner, target, subtarget, cns)
 
 
 def make_transform_constraint_from_string(owner, target, subtarget, fstring):
@@ -1428,3 +1432,22 @@ def make_track_constraint_from_string(owner, target, subtarget, fstring):
         const.target_space = constraint_space[cns_props[3][0]] if bool(cns_props[3]) else "LOCAL"
         const.owner_space = constraint_space[cns_props[3][1]] if bool(cns_props[3]) else "LOCAL"
         const.head_tail = float(cns_props[4]) if bool(cns_props[4]) else 0.0
+
+
+def make_relation_constraint_from_string(owner, target, subtarget, fstring):
+
+    # regex is (type)
+    regex = '^(PA)$'
+
+    constraint_type = {'PA': 'PARENTING'}
+
+    re_object = re.match(regex, fstring)
+    if not re_object:
+        return
+    else:
+        cns_props = re_object.groups()
+
+    cns_type = constraint_type[cns_props[0]]
+
+    if cns_type == 'PARENTING':
+        target.data.edit_bones[owner.name].parent = target.data.edit_bones[subtarget]
