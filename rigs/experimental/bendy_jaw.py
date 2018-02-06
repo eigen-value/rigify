@@ -279,7 +279,7 @@ class Rig(ChainyRig):
         self.create_controls()
         self.parent_bones()
 
-        self.control_snapper.aggregate_ctrls()
+        self.control_snapper.aggregate_ctrls(same_parent=False)
 
         self.make_constraints()
         self.make_drivers()

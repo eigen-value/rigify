@@ -50,10 +50,11 @@ class ControlSnapper:
         for child in edit_bones[old_parent].children:
             child.parent = edit_bones[new_parent]
 
-    def aggregate_ctrls(self):
+    def aggregate_ctrls(self, same_parent=True):
         """
         Aggregate controls should be called before constraining but AFTER parenting
         two ctrls are aggregated only if they are close enough and have the same parent
+        or same_parent = False
         :return:
         """
 
@@ -70,7 +71,7 @@ class ControlSnapper:
             for ctrl2 in all_ctrls[1:]:
                 error = edit_bones[ctrl].length * self.POSITION_RELATIVE_ERROR
                 if (edit_bones[ctrl].head - edit_bones[ctrl2].head).magnitude <= error \
-                        and edit_bones[ctrl].parent == edit_bones[ctrl2].parent:
+                        and (not same_parent or edit_bones[ctrl].parent == edit_bones[ctrl2].parent):
                     aggregate.append(ctrl2)
             for element in aggregate:
                 all_ctrls.remove(element)
