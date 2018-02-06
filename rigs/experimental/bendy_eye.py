@@ -11,6 +11,7 @@ from ...utils import org, strip_org, strip_def, make_deformer_name, connected_ch
 from ...utils import create_circle_widget, create_sphere_widget, create_widget, create_cube_widget
 from ...utils import MetarigError
 from ...utils import make_constraints_from_string, align_bone_y_axis
+from ..widgets import create_eye_widget, create_eyes_widget
 from .chainy_rig import ChainyRig
 from .control_snapper import ControlSnapper
 
@@ -102,11 +103,12 @@ class Rig(ChainyRig):
         eye_mch_name = copy_bone(self.obj, self.bones['org'][0], eye_mch_name)
         self.bones['eye_mch']['eye_master'] = eye_mch_name
 
-        eye_tip_mch_name = copy_bone(self.obj, self.bones['org'][0], eye_mch_name)
+        eye_tip_mch_name = copy_bone(self.obj, self.orientation_bone, eye_mch_name)
         self.bones['eye_mch']['eye_master_tip'] = eye_tip_mch_name
-        tip_len = edit_bones[eye_mch_name].length * 0.25
-        edit_bones[eye_tip_mch_name].tail = edit_bones[eye_mch_name].tail + tip_len * edit_bones[eye_mch_name].y_axis
-        edit_bones[eye_tip_mch_name].head = edit_bones[eye_mch_name].tail
+        put_bone(self.obj, eye_tip_mch_name, edit_bones[eye_mch_name].tail)
+        if self.orientation_bone == self.base_bone:
+            align_bone_y_axis(self.obj, eye_tip_mch_name, Vector((0, 0, 1)))
+        edit_bones[eye_tip_mch_name].length = 0.25 * edit_bones[eye_mch_name].length
 
         # top lid
         top_lid_chain = [self.lid_bones['top'][0]]
@@ -134,40 +136,51 @@ class Rig(ChainyRig):
 
         self.bones['eye_ctrl'] = dict()
 
+        if self.orientation_bone == self.base_bone:
+            axis = Vector((0, 0, 1))
+        else:
+            axis = edit_bones[self.orientation_bone].y_axis
+
         eye_ctrl_name = "master_" + strip_org(self.bones['org'][0])
         eye_ctrl = copy_bone(self.obj, self.bones['org'][0], eye_ctrl_name)
         self.bones['eye_ctrl']['master_eye'] = eye_ctrl
 
         eye_target_name = strip_org(self.bones['org'][0])
-        eye_target = copy_bone(self.obj, self.bones['org'][0], eye_target_name)
+        eye_target = copy_bone(self.obj, self.orientation_bone, eye_target_name)
         self.bones['eye_ctrl']['eye_target'] = eye_target
-
-        edit_bones[eye_target].head = edit_bones[eye_target].tail + \
-                                      edit_bones[eye_target].y_axis * 5 * edit_bones[eye_target].length
-        target_len = edit_bones[self.bones['org'][0]].length * 0.33
-        edit_bones[eye_target].tail[:] = edit_bones[eye_target].head + target_len * edit_bones[eye_ctrl].y_axis
+        position = edit_bones[eye_ctrl].tail + 5 * edit_bones[eye_ctrl].length * edit_bones[eye_ctrl].y_axis
+        put_bone(self.obj, eye_target, position)
+        edit_bones[eye_target].length = 0.5 * edit_bones[self.base_bone].length
+        align_bone_y_axis(self.obj, eye_target, axis)
 
         # make standard controls
         super().create_controls()
+        top_chain = strip_org(self.lid_bones['top'][0])
+        bottom_chain = strip_org(self.lid_bones['bottom'][0])
 
         if self.lid_len % 2 != 0:
             mid_index = int((self.lid_len + 1)/2)
 
-            top_chain = strip_org(self.lid_bones['top'][0])
             top_lid_master = copy_bone(self.obj, self.bones['ctrl'][top_chain][0])
             edit_bones[top_lid_master].length *= 1.5
             self.bones['eye_ctrl']['top_lid_master'] = top_lid_master
             mid_bone_1 = edit_bones[self.bones['ctrl'][top_chain][mid_index - 1]]
             mid_bone_2 = edit_bones[self.bones['ctrl'][top_chain][mid_index]]
             put_bone(self.obj, top_lid_master, (mid_bone_1.head + mid_bone_2.head)/2)
+            align_bone_y_axis(self.obj, top_lid_master, axis)
 
-            bottom_chain = strip_org(self.lid_bones['bottom'][0])
             bottom_lid_master = copy_bone(self.obj, self.bones['ctrl'][bottom_chain][0])
             edit_bones[bottom_lid_master].length *= 1.5
             self.bones['eye_ctrl']['bottom_lid_master'] = bottom_lid_master
             mid_bone_1 = edit_bones[self.bones['ctrl'][bottom_chain][mid_index - 1]]
             mid_bone_2 = edit_bones[self.bones['ctrl'][bottom_chain][mid_index]]
             put_bone(self.obj, bottom_lid_master, (mid_bone_1.head + mid_bone_2.head)/2)
+            align_bone_y_axis(self.obj, bottom_lid_master, axis)
+
+        else:
+            mid_index = int((self.lid_len) / 2)
+            edit_bones[self.bones['ctrl'][top_chain][mid_index]].length *= 1.5
+            edit_bones[self.bones['ctrl'][bottom_chain][mid_index]].length *= 1.5
 
         # create eyes master if eye has company
         if self.paired_eye and strip_org(self.paired_eye) in edit_bones:
@@ -181,6 +194,12 @@ class Rig(ChainyRig):
             align_bone_y_axis(self.obj, common_ctrl, direction)
             edit_bones[other_eye].parent = edit_bones[common_ctrl]
             edit_bones[eye_target].parent = edit_bones[common_ctrl]
+
+        for ctrl in self.bones['ctrl'][top_chain]:
+            align_bone_y_axis(self.obj, ctrl, axis)
+
+        for ctrl in self.bones['ctrl'][bottom_chain]:
+            align_bone_y_axis(self.obj, ctrl, axis)
 
     def parent_bones(self):
         """
@@ -367,7 +386,7 @@ class Rig(ChainyRig):
 
         # eye target
         eye_target = self.bones['eye_ctrl']['eye_target']
-        create_circle_widget(self.obj, eye_target)
+        create_eye_widget(self.obj, eye_target)
 
         # top lid master
         if 'top_lid_master' in self.bones['eye_ctrl']:
@@ -381,7 +400,7 @@ class Rig(ChainyRig):
 
         if 'common' in self.bones['eye_ctrl']:
             common_ctrl = self.bones['eye_ctrl']['common']
-            create_circle_widget(self.obj, common_ctrl)
+            create_eyes_widget(self.obj, common_ctrl)
 
         super().create_widgets()
 
