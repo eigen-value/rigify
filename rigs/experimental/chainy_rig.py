@@ -1,7 +1,7 @@
 import bpy
 from ...utils import connected_children_names, strip_org, make_mechanism_name, copy_bone, make_deformer_name, put_bone
 from ...utils import create_sphere_widget, strip_def
-from ...utils import MetarigError
+from ...utils import MetarigError, get_rig_type
 
 from .base_rig import BaseRig
 
@@ -16,6 +16,8 @@ class ChainyRig(BaseRig):
         super().__init__(obj, bone_name, params)
 
         self.chains = self.get_chains()
+
+        self.orientation_bone = self.get_orientation_bone()
 
     def get_chains(self):
             """
@@ -52,6 +54,29 @@ class ChainyRig(BaseRig):
                     subchains.append(bone.name)
 
         return subchains
+
+    def get_orientation_bone(self):
+        """
+        Get bone defining orientation of ctrls
+        :return:
+        """
+        bpy.ops.object.mode_set(mode='EDIT')
+
+        orientation_bone = self.obj.pose.bones[self.base_bone]
+
+        while True:
+            if orientation_bone.parent is None:
+                break
+            elif orientation_bone.parent.rigify_type != "":
+                module = get_rig_type(orientation_bone.parent.rigify_type)
+                if issubclass(module.Rig, ChainyRig):
+                    orientation_bone = orientation_bone.parent
+                else:
+                    break
+            else:
+                break
+
+        return orientation_bone.name
 
     def make_mch_chain(self, first_name):
         """
@@ -123,13 +148,13 @@ class ChainyRig(BaseRig):
         self.bones['ctrl'][strip_org(first_name)] = []
 
         for chain_bone in chain:
-            ctrl = copy_bone(self.obj, self.bones['org'][0], assign_name=strip_org(chain_bone))
+            ctrl = copy_bone(self.obj, self.orientation_bone, assign_name=strip_org(chain_bone))
             put_bone(self.obj, ctrl, edit_bones[chain_bone].head)
             edit_bones[ctrl].length *= self.CTRL_SCALE
             self.bones['ctrl'][strip_org(first_name)].append(ctrl)
 
         last_name = chain[-1]
-        last_ctrl = copy_bone(self.obj, self.bones['org'][0], assign_name=strip_org(last_name))
+        last_ctrl = copy_bone(self.obj, self.orientation_bone, assign_name=strip_org(last_name))
         put_bone(self.obj, last_ctrl, edit_bones[last_name].tail)
         edit_bones[last_ctrl].length *= self.CTRL_SCALE
         self.bones['ctrl'][strip_org(first_name)].append(last_ctrl)
