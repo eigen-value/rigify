@@ -10,9 +10,7 @@ from ...utils import copy_bone, flip_bone, put_bone
 from ...utils import org, strip_org, strip_def, make_deformer_name, connected_children_names, make_mechanism_name
 from ...utils import create_circle_widget, create_sphere_widget, create_widget, create_cube_widget
 from ...utils import MetarigError
-from ...utils import make_constraints_from_string
-from rna_prop_ui import rna_idprop_ui_prop_get
-from ..widgets import create_face_widget, create_eye_widget, create_eyes_widget, create_ear_widget, create_jaw_widget, create_teeth_widget
+from ...utils import make_constraints_from_string, align_bone_y_axis
 from .chainy_rig import ChainyRig
 from .control_snapper import ControlSnapper
 
@@ -26,6 +24,8 @@ class Rig(ChainyRig):
 
         self.lid_len = None
         self.lid_bones = self.get_eyelids()
+
+        self.paired_eye = self.get_paired_eye()
 
     def get_eyelids(self):
         """
@@ -65,6 +65,27 @@ class Rig(ChainyRig):
 
         return eyelids_bones_dict
 
+    def get_paired_eye(self):
+        """
+        A paired eye must follow the name rule: <bone_name>.<suffix>.<extra> where suffix = L or R and
+        the other elements must be the same
+        :return:
+        """
+
+        new_bone_name_blocks = self.bones['org'][0].split('.')
+
+        if new_bone_name_blocks[1] == 'R':
+            new_bone_name_blocks[1] = 'L'
+        elif new_bone_name_blocks[1] == 'L':
+            new_bone_name_blocks[1] = 'R'
+
+        paired_org = '.'.join(new_bone_name_blocks)
+
+        if paired_org in self.obj.data.edit_bones:
+            return paired_org
+        else:
+            return ''
+
     def create_mch(self):
 
         bpy.ops.object.mode_set(mode='EDIT')
@@ -102,9 +123,6 @@ class Rig(ChainyRig):
             lid_m_name = copy_bone(self.obj, self.bones['org'][0], eye_mch_name)
             edit_bones[lid_m_name].tail = edit_bones[l_b].tail
             self.bones['eye_mch']['eyelid_bottom'].append(lid_m_name)
-
-        # create remaining subchain mch-s
-        super().create_mch()
 
     def create_def(self):
         super().create_def()
@@ -150,6 +168,19 @@ class Rig(ChainyRig):
             mid_bone_1 = edit_bones[self.bones['ctrl'][bottom_chain][mid_index - 1]]
             mid_bone_2 = edit_bones[self.bones['ctrl'][bottom_chain][mid_index]]
             put_bone(self.obj, bottom_lid_master, (mid_bone_1.head + mid_bone_2.head)/2)
+
+        # create eyes master if eye has company
+        if self.paired_eye and strip_org(self.paired_eye) in edit_bones:
+            other_eye = strip_org(self.paired_eye)
+            position = (edit_bones[eye_target].head + edit_bones[other_eye].head) / 2
+            direction = edit_bones[eye_target].y_axis + edit_bones[other_eye].y_axis
+            common_ctrl = strip_org(self.paired_eye.split('.')[0] + '_common')
+            common_ctrl = copy_bone(self.obj, eye_target, common_ctrl)
+            self.bones['eye_ctrl']['common'] = common_ctrl
+            put_bone(self.obj, common_ctrl, position)
+            align_bone_y_axis(self.obj, common_ctrl, direction)
+            edit_bones[other_eye].parent = edit_bones[common_ctrl]
+            edit_bones[eye_target].parent = edit_bones[common_ctrl]
 
     def parent_bones(self):
         """
@@ -348,6 +379,10 @@ class Rig(ChainyRig):
             bottom_lid_master = self.bones['eye_ctrl']['bottom_lid_master']
             create_sphere_widget(self.obj, bottom_lid_master)
 
+        if 'common' in self.bones['eye_ctrl']:
+            common_ctrl = self.bones['eye_ctrl']['common']
+            create_circle_widget(self.obj, common_ctrl)
+
         super().create_widgets()
 
     def generate(self):
@@ -356,7 +391,7 @@ class Rig(ChainyRig):
         self.create_controls()
         self.parent_bones()
 
-        self.control_snapper.aggregate_ctrls()
+        self.control_snapper.aggregate_ctrls(same_parent=False)
 
         self.make_constraints()
         self.create_widgets()
