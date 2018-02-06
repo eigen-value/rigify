@@ -115,6 +115,7 @@ class Rig(ChainyRig):
             jaw_m = copy_bone(self.obj, self.main_mch, jaw_m_name)
             div_len = (edit_bones[mouth_lock].length/(jaw_masters_number + 1))
             edit_bones[jaw_m].length = (jaw_masters_number - i) * div_len
+            edit_bones[jaw_m].use_connect = False
 
             self.bones['jaw_mch']['jaw_masters'].append(jaw_m)
 
