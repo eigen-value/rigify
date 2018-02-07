@@ -35,9 +35,8 @@ class Rig(ChainyRig):
         self.lid_len = None
         self.lid_bones = self.get_eyelids()
 
-        self.needs_driver = False
-        self.paired_eye = ''
-        self.get_paired_eye()
+        self.paired_eye = self.get_paired_eye()
+        self.needs_driver = self.get_driver_condition()
 
         self.add_eyefollow = params.add_eyefollow
 
@@ -87,7 +86,7 @@ class Rig(ChainyRig):
         """
 
         if not self.params.paired_eye:
-            return
+            return ''
 
         bpy.ops.object.mode_set(mode='OBJECT')
         pose_bones = self.obj.pose.bones
@@ -95,9 +94,9 @@ class Rig(ChainyRig):
         paired_eye = org(self.params.paired_eye)
 
         if pose_bones[paired_eye].rigify_parameters.paired_eye == strip_org(self.base_bone):
-            self.paired_eye = paired_eye
+            return paired_eye
 
-        self.needs_driver = self.get_driver_condition()
+        return ''
 
     def get_common_name(self):
         """
