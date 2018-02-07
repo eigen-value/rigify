@@ -20,7 +20,7 @@ all_controls   = [%s]
 jaw_ctrl_name  = '%s'
 
 if is_selected(all_controls):
-    layout.prop(pose_bones[jaw_ctrl_name],  '["mouth_lock"]', slider=True)
+    layout.prop(pose_bones[jaw_ctrl_name],  '["%s"]', slider=True)
 """
 
 
@@ -223,6 +223,8 @@ class Rig(ChainyRig):
             var.targets[0].id = self.obj
             var.targets[0].data_path = jaw_master.path_from_id() + '[' + '"' + prop_name + '"' + ']'
 
+        return prop_name
+
     def parent_bones(self):
         """
         Parent jaw bones
@@ -288,14 +290,14 @@ class Rig(ChainyRig):
         self.control_snapper.aggregate_ctrls(same_parent=False)
 
         self.make_constraints()
-        self.make_drivers()
+        prop_name = self.make_drivers()
         self.create_widgets()
 
         all_ctrls = self.control_snapper.flatten(self.bones['ctrl'])
         all_ctrls.append(self.bones['jaw_ctrl']['jaw'])
 
         controls_string = ", ".join(["'" + x + "'" for x in all_ctrls])
-        return [script % (controls_string, self.bones['jaw_ctrl']['jaw'])]
+        return [script % (controls_string, self.bones['jaw_ctrl']['jaw'], prop_name)]
 
 
 def create_sample(obj):
