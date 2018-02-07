@@ -6,6 +6,7 @@
 import bpy
 import re
 from mathutils import Vector
+from rna_prop_ui import rna_idprop_ui_prop_get
 from ...utils import copy_bone, flip_bone, put_bone
 from ...utils import org, strip_org, strip_def, make_deformer_name, connected_children_names, make_mechanism_name
 from ...utils import create_circle_widget, create_sphere_widget, create_widget, create_cube_widget
@@ -14,6 +15,14 @@ from ...utils import make_constraints_from_string, align_bone_y_axis
 from ..widgets import create_eye_widget, create_eyes_widget
 from .chainy_rig import ChainyRig
 from .control_snapper import ControlSnapper
+
+script = """
+all_controls   = [%s]
+eyes_ctrl_name = '%s'
+
+if is_selected(all_controls):
+    layout.prop(pose_bones[eyes_ctrl_name], '["%s"]', slider=True)
+"""
 
 
 class Rig(ChainyRig):
@@ -26,7 +35,11 @@ class Rig(ChainyRig):
         self.lid_len = None
         self.lid_bones = self.get_eyelids()
 
-        self.paired_eye = self.get_paired_eye()
+        self.needs_driver = False
+        self.paired_eye = ''
+        self.get_paired_eye()
+
+        self.add_eyefollow = params.add_eyefollow
 
     def get_eyelids(self):
         """
@@ -73,19 +86,62 @@ class Rig(ChainyRig):
         :return:
         """
 
-        new_bone_name_blocks = self.bones['org'][0].split('.')
+        if not self.params.paired_eye:
+            return
 
-        if new_bone_name_blocks[1] == 'R':
-            new_bone_name_blocks[1] = 'L'
-        elif new_bone_name_blocks[1] == 'L':
-            new_bone_name_blocks[1] = 'R'
+        bpy.ops.object.mode_set(mode='OBJECT')
+        pose_bones = self.obj.pose.bones
 
-        paired_org = '.'.join(new_bone_name_blocks)
+        paired_eye = org(self.params.paired_eye)
 
-        if paired_org in self.obj.data.edit_bones:
-            return paired_org
-        else:
-            return ''
+        if pose_bones[paired_eye].rigify_parameters.paired_eye == strip_org(self.base_bone):
+            self.paired_eye = paired_eye
+
+        self.needs_driver = self.get_driver_condition()
+
+    def get_common_name(self):
+        """
+        Returns an aggregate name for an eyes pair
+        :return:
+        :rtype: str
+        """
+
+        base = strip_org(self.base_bone)
+        pair = strip_org(self.paired_eye)
+
+        return self.control_snapper.get_aggregate_name([base, pair])
+
+    def get_paired_eye_ctrls_name(self):
+        """
+        utility function for pairing with another eye. Gives all the expected ctrl names
+        :return: list of ctrl names
+        :rtype: list
+        """
+
+        if not self.paired_eye:
+            return []
+
+        base_name = strip_org(self.paired_eye)
+
+        target = base_name
+        master = 'master_' + base_name
+
+        return [target, master]
+
+    def get_driver_condition(self):
+        bpy.ops.object.mode_set(mode='OBJECT')
+        pose_bones = self.obj.pose.bones
+
+        has_parent = bool(pose_bones[self.base_bone].parent)
+
+        paired_follows = False
+        has_paired = bool(self.paired_eye)
+        if has_paired:
+            paired_follows = pose_bones[self.paired_eye].rigify_parameters.add_eyefollow
+
+        condition = (not has_paired or paired_follows) and has_parent and self.params.add_eyefollow
+
+        return condition
 
     def create_mch(self):
 
@@ -125,6 +181,23 @@ class Rig(ChainyRig):
             lid_m_name = copy_bone(self.obj, self.bones['org'][0], eye_mch_name)
             edit_bones[lid_m_name].tail = edit_bones[l_b].tail
             self.bones['eye_mch']['eyelid_bottom'].append(lid_m_name)
+
+        # create mch for eye_follow driver
+        if self.needs_driver:
+            if self.paired_eye:
+                eye_follow_mch = self.get_common_name()
+            else:
+                eye_follow_mch = strip_org(self.base_bone)
+            eye_follow_mch = make_mechanism_name(eye_follow_mch)
+            eye_follow_mch += "_parent"
+
+            if eye_follow_mch not in edit_bones:
+                parent = edit_bones[self.base_bone].parent.name
+                eye_follow_mch = copy_bone(self.obj, parent, eye_follow_mch)
+                edit_bones[eye_follow_mch].length = 0.25 * edit_bones[parent].length
+            self.bones['eye_mch']['eyefollow'] = eye_follow_mch
+
+        super().create_mch()
 
     def create_def(self):
         super().create_def()
@@ -187,13 +260,11 @@ class Rig(ChainyRig):
             other_eye = strip_org(self.paired_eye)
             position = (edit_bones[eye_target].head + edit_bones[other_eye].head) / 2
             direction = edit_bones[eye_target].y_axis + edit_bones[other_eye].y_axis
-            common_ctrl = strip_org(self.paired_eye.split('.')[0] + '_common')
+            common_ctrl = self.get_common_name() + '_common'
             common_ctrl = copy_bone(self.obj, eye_target, common_ctrl)
             self.bones['eye_ctrl']['common'] = common_ctrl
             put_bone(self.obj, common_ctrl, position)
             align_bone_y_axis(self.obj, common_ctrl, direction)
-            edit_bones[other_eye].parent = edit_bones[common_ctrl]
-            edit_bones[eye_target].parent = edit_bones[common_ctrl]
 
         for ctrl in self.bones['ctrl'][top_chain]:
             align_bone_y_axis(self.obj, ctrl, axis)
@@ -247,6 +318,20 @@ class Rig(ChainyRig):
             else:
                 edit_bones[lid_def].parent = edit_bones[self.bones['eye_mch']['eyelid_bottom'][i-1]]
 
+        if 'common' in self.bones['eye_ctrl']:
+            common_ctrl = self.bones['eye_ctrl']['common']
+            other_eye = strip_org(self.paired_eye)
+            eye_target = self.bones['eye_ctrl']['eye_target']
+            edit_bones[eye_target].parent = edit_bones[common_ctrl]
+            edit_bones[other_eye].parent = edit_bones[common_ctrl]
+            if 'eyefollow' in self.bones['eye_mch']:
+                edit_bones[common_ctrl].parent = edit_bones[self.bones['eye_mch']['eyefollow']]
+        elif 'eyefollow' in self.bones['eye_mch']:
+            eye_target = self.bones['eye_ctrl']['eye_target']
+            edit_bones[eye_target].parent = edit_bones[self.bones['eye_mch']['eyefollow']]
+        if 'eyefollow' in self.bones['eye_mch']:
+            edit_bones[self.bones['eye_mch']['eyefollow']].parent = None
+
     def make_constraints(self):
 
         """
@@ -275,6 +360,13 @@ class Rig(ChainyRig):
         eye_mch_name = pose_bones[self.bones['eye_mch']['eye_master']]
         subtarget = self.bones['eye_ctrl']['eye_target']
         make_constraints_from_string(eye_mch_name, self.obj, subtarget, "DT1.0Y0.0")
+
+        # eye_follow cns
+        if 'eyefollow' in self.bones['eye_mch']:
+            owner = pose_bones[self.bones['eye_mch']['eyefollow']]
+            subtarget = pose_bones[self.base_bone].parent.name
+            if not owner.constraints:   # this is important in paired eyes not to have repeated cns
+                make_constraints_from_string(owner, self.obj, subtarget, "CT1.0WW0.0")
 
         if self.lid_len % 2 == 0:
             i = int(self.lid_len/2)
@@ -376,6 +468,48 @@ class Rig(ChainyRig):
                     cns.subtarget = self.bones['eye_mch']['eyelid_bottom'][i]
                     cns.head_tail = 1.0
 
+    def make_drivers(self):
+
+        if not self.needs_driver:
+            return ''
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        pose_bones = self.obj.pose.bones
+
+        # eyefollow driver
+        if self.paired_eye:
+            if 'common' in self.bones['eye_ctrl'] and 'eyefollow' in self.bones['eye_mch']:
+                bone = self.bones['eye_ctrl']['common']
+            else:
+                return ''
+        else:
+            bone = self.bones['eye_ctrl']['eye_target']
+
+        prop_name = self.get_common_name() + '_follow'
+
+        pose_bones[bone][prop_name] = 1.0
+
+        prop = rna_idprop_ui_prop_get(pose_bones[bone], prop_name)
+        prop["min"] = 0.0
+        prop["max"] = 1.0
+        prop["soft_min"] = 0.0
+        prop["soft_max"] = 1.0
+        prop["description"] = prop_name
+
+        # Eyes driver
+        mch_eyes_parent = self.bones['eye_mch']['eyefollow']
+
+        drv = pose_bones[mch_eyes_parent].constraints[0].driver_add("influence").driver
+        drv.type='SUM'
+
+        var = drv.variables.new()
+        var.name = prop_name
+        var.type = "SINGLE_PROP"
+        var.targets[0].id = self.obj
+        var.targets[0].data_path = pose_bones[bone].path_from_id() + '[' + '"' + prop_name + '"' + ']'
+
+        return prop_name
+
     def create_widgets(self):
 
         bpy.ops.object.mode_set(mode='OBJECT')
@@ -404,6 +538,17 @@ class Rig(ChainyRig):
 
         super().create_widgets()
 
+    def cleanup(self):
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
+
+        # cleanup
+        for mch in self.bones['mch'][strip_org(self.lid_bones['top'][0])]:
+            edit_bones.remove(edit_bones[mch])
+        for mch in self.bones['mch'][strip_org(self.lid_bones['bottom'][0])]:
+            edit_bones.remove(edit_bones[mch])
+
     def generate(self):
         self.create_mch()
         self.create_def()
@@ -413,7 +558,27 @@ class Rig(ChainyRig):
         self.control_snapper.aggregate_ctrls(same_parent=False)
 
         self.make_constraints()
+        prop_name = self.make_drivers()
         self.create_widgets()
+
+        self.cleanup()
+
+        if prop_name:
+            main_ctrl = ''
+            all_ctrls = []
+            all_ctrls.append(self.bones['eye_ctrl']['eye_target'])
+            all_ctrls.append(self.bones['eye_ctrl']['master_eye'])
+            if 'common' in self.bones['eye_ctrl']:
+                all_ctrls.append(self.bones['eye_ctrl']['common'])
+                all_ctrls.extend(self.get_paired_eye_ctrls_name())
+                main_ctrl = self.bones['eye_ctrl']['common']
+            elif not self.paired_eye:
+                main_ctrl = self.bones['eye_ctrl']['eye_target']
+
+            controls_string = ", ".join(["'" + x + "'" for x in all_ctrls])
+
+            if main_ctrl:
+                return [script % (controls_string, main_ctrl, prop_name)]
 
         return [""]
 
@@ -564,3 +729,61 @@ def create_sample(obj):
         bone.select_head = True
         bone.select_tail = True
         arm.edit_bones.active = bone
+
+
+def add_parameters(params):
+    """ Add the parameters of this rig type to the
+        RigifyParameters PropertyGroup
+    """
+
+    # Setting up extra layers for the tweak bones
+    params.add_eyefollow = bpy.props.BoolProperty(
+        name="add_eyefollow",
+        default=True,
+        description="Add an eye-follow driver to this eye(s)"
+        )
+
+    def set_paired(self, value):
+        context = bpy.context
+        obj = context.active_object
+        pb = context.active_pose_bone
+        name = pb.name
+
+        if value not in obj.pose.bones or obj.pose.bones[value].rigify_type != 'experimental.bendy_eye':
+            self['paired_eye'] = ''
+            return
+        else:
+            self['paired_eye'] = value
+
+        if value == name:
+            return
+
+        if obj.pose.bones[value].rigify_parameters.paired_eye != name:
+            obj.pose.bones[value].rigify_parameters.paired_eye = name
+
+    def get_paired(self):
+        if 'paired_eye' in self.keys():
+            return self['paired_eye']
+        else:
+            return ''
+
+    params.set_paired = set_paired
+    params.get_paired = get_paired
+
+    params.paired_eye = bpy.props.StringProperty(
+        name='paired_eye',
+        default="",
+        description='Name of paired eye',
+        set=set_paired,
+        get=get_paired
+    )
+
+
+def parameters_ui(layout, params):
+    """ Create the ui for the rig parameters."""
+
+    r = layout.row()
+    r.prop(params, "add_eyefollow")
+
+    r = layout.row()
+    r.prop(params, "paired_eye")
