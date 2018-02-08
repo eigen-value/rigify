@@ -105,10 +105,16 @@ class Rig(ChainyRig):
         :rtype: str
         """
 
-        base = strip_org(self.base_bone)
-        pair = strip_org(self.paired_eye)
+        cluster = []
 
-        return self.control_snapper.get_aggregate_name([base, pair])
+        if self.is_clustered():
+            cluster = self.get_cluster_names()
+        else:
+            base = strip_org(self.base_bone)
+            pair = strip_org(self.paired_eye)
+            cluster = [base, pair]
+
+        return self.control_snapper.get_aggregate_name(cluster)
 
     def get_paired_eye_ctrls_name(self):
         """
@@ -133,14 +139,71 @@ class Rig(ChainyRig):
 
         has_parent = bool(pose_bones[self.base_bone].parent)
 
+        is_clustered = self.is_clustered()
+
         paired_follows = False
         has_paired = bool(self.paired_eye)
         if has_paired:
             paired_follows = pose_bones[self.paired_eye].rigify_parameters.add_eyefollow
 
-        condition = (not has_paired or paired_follows) and has_parent and self.params.add_eyefollow
+        condition = (not has_paired or paired_follows or is_clustered) and has_parent and self.params.add_eyefollow
 
         return condition
+
+    def is_clustered(self):
+        """
+        True if is a clustered eye
+        :return:
+        :rtype: bool
+        """
+
+        return self.obj.pose.bones[self.base_bone].rigify_parameters.clustered_eye
+
+    def get_cluster_names(self):
+        """
+        Names of bones in the cluster
+        :return:
+        :rtype: list(str)
+        """
+
+        names = []
+
+        for pb in self.obj.pose.bones:
+            if pb.rigify_type == 'experimental.bendy_eye' and pb.rigify_parameters.clustered_eye:
+                names.append(strip_org(pb.name))
+
+        return names
+
+    def get_cluster_data(self):
+        """
+        Returns the center position and common direction of an eye-cluster
+        :return: [position, direction]
+        :rtype: list(Vector)
+        """
+
+        edit_bones = self.obj.data.edit_bones
+
+        positions = []
+        sum_position = Vector((0, 0, 0))
+
+        direction = None
+
+        for name in self.get_cluster_names():
+            did_generate_ctrl = strip_org(name) in edit_bones
+            if not did_generate_ctrl:
+                # this is not the last eye in the cluster, delay
+                return [None, None]
+            else:
+                positions.append(edit_bones[strip_org(name)].head)
+                sum_position += edit_bones[strip_org(name)].head
+                direction = edit_bones[strip_org(name)].y_axis
+
+        if positions and direction:
+            position = sum_position / len(positions)
+        else:
+            return [None, None]
+
+        return [position, direction]
 
     def create_mch(self):
 
@@ -183,7 +246,7 @@ class Rig(ChainyRig):
 
         # create mch for eye_follow driver
         if self.needs_driver:
-            if self.paired_eye:
+            if self.paired_eye or self.is_clustered():
                 eye_follow_mch = self.get_common_name()
             else:
                 eye_follow_mch = strip_org(self.base_bone)
@@ -255,10 +318,18 @@ class Rig(ChainyRig):
             edit_bones[self.bones['ctrl'][bottom_chain][mid_index]].length *= 1.5
 
         # create eyes master if eye has company
+        create_common_ctrl = False
         if self.paired_eye and strip_org(self.paired_eye) in edit_bones:
             other_eye = strip_org(self.paired_eye)
             position = (edit_bones[eye_target].head + edit_bones[other_eye].head) / 2
             direction = edit_bones[eye_target].y_axis + edit_bones[other_eye].y_axis
+            create_common_ctrl = True
+        elif self.is_clustered():
+            [position, direction] = self.get_cluster_data()
+            if position and direction:
+                create_common_ctrl = True
+
+        if create_common_ctrl:
             common_ctrl = self.get_common_name() + '_common'
             common_ctrl = copy_bone(self.obj, eye_target, common_ctrl)
             self.bones['eye_ctrl']['common'] = common_ctrl
@@ -319,10 +390,14 @@ class Rig(ChainyRig):
 
         if 'common' in self.bones['eye_ctrl']:
             common_ctrl = self.bones['eye_ctrl']['common']
-            other_eye = strip_org(self.paired_eye)
             eye_target = self.bones['eye_ctrl']['eye_target']
             edit_bones[eye_target].parent = edit_bones[common_ctrl]
-            edit_bones[other_eye].parent = edit_bones[common_ctrl]
+            if not self.is_clustered():
+                other_eye = strip_org(self.paired_eye)
+                edit_bones[other_eye].parent = edit_bones[common_ctrl]
+            else:
+                for name in self.get_cluster_names():
+                    edit_bones[name].parent = edit_bones[common_ctrl]
             if 'eyefollow' in self.bones['eye_mch']:
                 edit_bones[common_ctrl].parent = edit_bones[self.bones['eye_mch']['eyefollow']]
         elif 'eyefollow' in self.bones['eye_mch']:
@@ -737,10 +812,28 @@ def add_parameters(params):
 
     # Setting up extra layers for the tweak bones
     params.add_eyefollow = bpy.props.BoolProperty(
-        name="add_eyefollow",
+        name="Add eye-follow driver",
         default=True,
         description="Add an eye-follow driver to this eye(s)"
         )
+
+    def set_clustered(self, value):
+
+        if value:
+            self['paired_eye'] = ''
+
+        self['clustered'] = value
+
+    def get_clustered(self):
+        return self['clustered']
+
+    params.clustered_eye = bpy.props.BoolProperty(
+        name="Clustered",
+        default=False,
+        description="This eye belongs to a cluster",
+        set=set_clustered,
+        get=get_clustered
+    )
 
     def set_paired(self, value):
         context = bpy.context
@@ -770,7 +863,7 @@ def add_parameters(params):
     params.get_paired = get_paired
 
     params.paired_eye = bpy.props.StringProperty(
-        name='paired_eye',
+        name='Paired eye',
         default="",
         description='Name of paired eye',
         set=set_paired,
@@ -785,4 +878,10 @@ def parameters_ui(layout, params):
     r.prop(params, "add_eyefollow")
 
     r = layout.row()
+    r.prop(params, "clustered_eye")
+
+    r = layout.row()
     r.prop(params, "paired_eye")
+
+    if params.clustered_eye:
+        r.enabled = False
