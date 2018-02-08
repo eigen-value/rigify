@@ -206,7 +206,7 @@ class ChainyRig(BaseRig):
                     ctrl_bone = edit_bones[ctrl]
                     parent = self.get_ctrl_by_index(chain=strip_org(chain), index=i)
                     if parent:
-                        ctrl_bone.parent = edit_bones[parent]
+                        ctrl_bone.parent = edit_bones[parent].parent
 
     def make_constraints(self):
         """

@@ -831,7 +831,11 @@ def add_parameters(params):
         self['clustered'] = value
 
     def get_clustered(self):
-        return self['clustered']
+
+        if 'clustered' in self.keys():
+            return self['clustered']
+        else:
+            return False
 
     params.clustered_eye = bpy.props.BoolProperty(
         name="Clustered",
