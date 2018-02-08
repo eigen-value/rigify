@@ -14,6 +14,7 @@ from rna_prop_ui import rna_idprop_ui_prop_get
 from ..widgets import create_jaw_widget
 from .chainy_rig import ChainyRig
 from .control_snapper import ControlSnapper
+from .control_layers_generator import ControlLayersGenerator
 
 script = """
 all_controls   = [%s]
@@ -35,6 +36,8 @@ class Rig(ChainyRig):
         self.get_jaw()
         self.lip_len = None
         self.mouth_bones = self.get_mouth()
+
+        self.layer_generator = ControlLayersGenerator(self)
 
     def get_jaw(self):
         """
@@ -280,6 +283,17 @@ class Rig(ChainyRig):
 
         super().parent_bones()
 
+    def assign_layers(self):
+
+        primary_ctrls = []
+        primary_ctrls.extend(self.bones['ctrl'][strip_org(self.mouth_bones['top'][0])])
+        primary_ctrls.extend(self.bones['ctrl'][strip_org(self.mouth_bones['top'][1])])
+        primary_ctrls.extend(self.bones['ctrl'][strip_org(self.mouth_bones['bottom'][0])])
+        primary_ctrls.extend(self.bones['ctrl'][strip_org(self.mouth_bones['bottom'][1])])
+
+        all_ctrls = self.control_snapper.flatten(self.bones['ctrl'])
+        self.layer_generator.assign_layer(primary_ctrls, all_ctrls)
+
     def generate(self):
 
         self.create_mch()
@@ -288,6 +302,8 @@ class Rig(ChainyRig):
         self.parent_bones()
 
         self.control_snapper.aggregate_ctrls(same_parent=False)
+
+        self.assign_layers()
 
         self.make_constraints()
         prop_name = self.make_drivers()
@@ -460,3 +476,17 @@ def create_sample(obj):
         bone.select_head = True
         bone.select_tail = True
         arm.edit_bones.active = bone
+
+
+def add_parameters(params):
+    """ Add the parameters of this rig type to the
+        RigifyParameters PropertyGroup
+    """
+
+    ControlLayersGenerator.add_layer_parameters(params)
+
+
+def parameters_ui(layout, params):
+    """ Create the ui for the rig parameters."""
+
+    ControlLayersGenerator.add_layers_ui(layout, params)

@@ -15,6 +15,7 @@ from ...utils import make_constraints_from_string, align_bone_y_axis
 from ..widgets import create_eye_widget, create_eyes_widget
 from .chainy_rig import ChainyRig
 from .control_snapper import ControlSnapper
+from .control_layers_generator import ControlLayersGenerator
 
 script = """
 all_controls   = [%s]
@@ -37,8 +38,9 @@ class Rig(ChainyRig):
 
         self.paired_eye = self.get_paired_eye()
         self.needs_driver = self.get_driver_condition()
-
         self.add_eyefollow = params.add_eyefollow
+
+        self.layer_generator = ControlLayersGenerator(self)
 
     def get_eyelids(self):
         """
@@ -293,6 +295,8 @@ class Rig(ChainyRig):
 
         # make standard controls
         super().create_controls()
+
+        # add extra lid ctrls
         top_chain = strip_org(self.lid_bones['top'][0])
         bottom_chain = strip_org(self.lid_bones['bottom'][0])
 
@@ -317,8 +321,12 @@ class Rig(ChainyRig):
 
         else:
             mid_index = int((self.lid_len) / 2)
-            edit_bones[self.bones['ctrl'][top_chain][mid_index]].length *= 1.5
-            edit_bones[self.bones['ctrl'][bottom_chain][mid_index]].length *= 1.5
+            top_lid_master = self.bones['ctrl'][top_chain][mid_index]
+            bottom_lid_master = self.bones['ctrl'][bottom_chain][mid_index]
+            edit_bones[top_lid_master].length *= 1.5
+            edit_bones[bottom_lid_master].length *= 1.5
+            self.bones['eye_ctrl']['top_lid_master'] = top_lid_master
+            self.bones['eye_ctrl']['bottom_lid_master'] = bottom_lid_master
 
         # create eyes master if eye has company
         create_common_ctrl = False
@@ -408,6 +416,15 @@ class Rig(ChainyRig):
             edit_bones[eye_target].parent = edit_bones[self.bones['eye_mch']['eyefollow']]
         if 'eyefollow' in self.bones['eye_mch']:
             edit_bones[self.bones['eye_mch']['eyefollow']].parent = None
+
+    def assign_layers(self):
+
+        primary_ctrls = []
+        primary_ctrls.append(self.bones['eye_ctrl']['top_lid_master'])
+        primary_ctrls.append(self.bones['eye_ctrl']['bottom_lid_master'])
+
+        all_ctrls = self.control_snapper.flatten(self.bones['ctrl'])
+        self.layer_generator.assign_layer(primary_ctrls, all_ctrls)
 
     def make_constraints(self):
 
@@ -634,6 +651,8 @@ class Rig(ChainyRig):
 
         self.control_snapper.aggregate_ctrls(same_parent=False)
 
+        self.assign_layers()
+
         self.make_constraints()
         prop_name = self.make_drivers()
         self.create_widgets()
@@ -816,13 +835,16 @@ def add_parameters(params):
         RigifyParameters PropertyGroup
     """
 
-    # Setting up extra layers for the tweak bones
+    ControlLayersGenerator.add_layer_parameters(params)
+
+    # Add driver
     params.add_eyefollow = bpy.props.BoolProperty(
         name="Add eye-follow driver",
         default=True,
         description="Add an eye-follow driver to this eye(s)"
         )
 
+    # Pairing and clustering
     def set_clustered(self, value):
 
         if value:
@@ -895,3 +917,5 @@ def parameters_ui(layout, params):
 
     if params.clustered_eye:
         r.enabled = False
+
+    ControlLayersGenerator.add_layers_ui(layout, params)
