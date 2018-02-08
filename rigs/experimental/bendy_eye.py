@@ -159,7 +159,7 @@ class Rig(ChainyRig):
 
         return self.obj.pose.bones[self.base_bone].rigify_parameters.clustered_eye
 
-    def get_cluster_names(self):
+    def get_cluster_names(self, all_ctrls=False):
         """
         Names of bones in the cluster
         :return:
@@ -170,7 +170,10 @@ class Rig(ChainyRig):
 
         for pb in self.obj.pose.bones:
             if pb.rigify_type == 'experimental.bendy_eye' and pb.rigify_parameters.clustered_eye:
-                names.append(strip_org(pb.name))
+                base_name = strip_org(pb.name)
+                names.append(base_name)
+                if all_ctrls:
+                    names.append('master_' + base_name)
 
         return names
 
@@ -286,7 +289,7 @@ class Rig(ChainyRig):
         position = edit_bones[eye_ctrl].tail + 5 * edit_bones[eye_ctrl].length * edit_bones[eye_ctrl].y_axis
         put_bone(self.obj, eye_target, position)
         edit_bones[eye_target].length = 0.5 * edit_bones[self.base_bone].length
-        align_bone_y_axis(self.obj, eye_target, axis)
+        align_bone_y_axis(self.obj, eye_target, Vector((0, 0, 1)))
 
         # make standard controls
         super().create_controls()
@@ -551,7 +554,7 @@ class Rig(ChainyRig):
         pose_bones = self.obj.pose.bones
 
         # eyefollow driver
-        if self.paired_eye:
+        if self.paired_eye or self.is_clustered():
             if 'common' in self.bones['eye_ctrl'] and 'eyefollow' in self.bones['eye_mch']:
                 bone = self.bones['eye_ctrl']['common']
             else:
@@ -644,7 +647,10 @@ class Rig(ChainyRig):
             all_ctrls.append(self.bones['eye_ctrl']['master_eye'])
             if 'common' in self.bones['eye_ctrl']:
                 all_ctrls.append(self.bones['eye_ctrl']['common'])
-                all_ctrls.extend(self.get_paired_eye_ctrls_name())
+                if self.paired_eye:
+                    all_ctrls.extend(self.get_paired_eye_ctrls_name())
+                elif self.is_clustered():
+                    all_ctrls.extend(self.get_cluster_names(all_ctrls=True))
                 main_ctrl = self.bones['eye_ctrl']['common']
             elif not self.paired_eye:
                 main_ctrl = self.bones['eye_ctrl']['eye_target']
