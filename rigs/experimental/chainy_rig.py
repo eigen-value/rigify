@@ -8,7 +8,7 @@ from .base_rig import BaseRig
 
 class ChainyRig(BaseRig):
 
-    CTRL_SCALE = 0.1
+    CTRL_SCALE = 0.05
     MCH_SCALE = 0.3
 
     def __init__(self, obj, bone_name, params):
@@ -150,13 +150,13 @@ class ChainyRig(BaseRig):
         for chain_bone in chain:
             ctrl = copy_bone(self.obj, self.orientation_bone, assign_name=strip_org(chain_bone))
             put_bone(self.obj, ctrl, edit_bones[chain_bone].head)
-            edit_bones[ctrl].length = edit_bones[self.base_bone].length * self.CTRL_SCALE
+            edit_bones[ctrl].length = edit_bones[self.orientation_bone].length * self.CTRL_SCALE
             self.bones['ctrl'][strip_org(first_name)].append(ctrl)
 
         last_name = chain[-1]
         last_ctrl = copy_bone(self.obj, self.orientation_bone, assign_name=strip_org(last_name))
         put_bone(self.obj, last_ctrl, edit_bones[last_name].tail)
-        edit_bones[last_ctrl].length = edit_bones[self.base_bone].length * self.CTRL_SCALE
+        edit_bones[last_ctrl].length = edit_bones[self.orientation_bone].length * self.CTRL_SCALE
         self.bones['ctrl'][strip_org(first_name)].append(last_ctrl)
 
     def create_controls(self):
