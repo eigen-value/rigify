@@ -1343,6 +1343,7 @@ def make_constraints_from_string(owner, target, subtarget, fstring):
     cns_blocks = fstring.split(separator)
 
     transform_type = ['CL', 'CR', 'CS', 'CT']
+    limit_type = ['LL', 'LR', 'LS']
     track_type = ['DT', 'TT']
     relationship_type = ['PA']
 
@@ -1350,6 +1351,9 @@ def make_constraints_from_string(owner, target, subtarget, fstring):
 
         if cns[0:2] in transform_type:
             make_transform_constraint_from_string(owner, target, subtarget, cns)
+
+        if cns[0:2] in limit_type:
+            make_limit_constraint_from_string(owner, cns)
 
         if cns[0:2] in track_type:
             make_track_constraint_from_string(owner, target, subtarget, cns)
@@ -1398,6 +1402,124 @@ def make_transform_constraint_from_string(owner, target, subtarget, fstring):
         const.target_space = constraint_space[cns_props[2][0]] if bool(cns_props[2]) else "LOCAL"
         const.owner_space = constraint_space[cns_props[2][1]] if bool(cns_props[2]) else "LOCAL"
         const.head_tail = float(cns_props[4]) if bool(cns_props[4]) else 0.0
+
+
+def make_limit_constraint_from_string(owner, fstring):
+
+    regular_expressions = {'LL': '^(LL)([0-9]*\.?[0-9]+)*(([mM]{1}[XYZ]{1}[0-9]*\.?[0-9]+)+)*(T)*(W|L|P)*$',
+                           'LR': '^(LR)([0-9]*\.?[0-9]+)*(([mM]{1}[XYZ]{1}[0-9]*\.?[0-9]+)+)*(T)*(W|L|P)*$',
+                           'LS': '^(LS)([0-9]*\.?[0-9]+)*(([mM]{1}[XYZ]{1}[0-9]*\.?[0-9]+)+)*(T)*(W|L|P)*$'}
+
+    # regex is (type)(influence*)(limits:mXmYmZMXMYMZxx.xxx*)(use_transform_limit*)(owner_space*)
+    regex = regular_expressions[fstring[0:2]]
+
+    constraint_type = {'LL': 'LIMIT_LOCATION', 'LR': 'LIMIT_ROTATION', 'LS': 'LIMIT_SCALE'}
+    constraint_space = {'L': 'LOCAL', 'W': 'WORLD', 'P': 'POSE'}
+
+    re_object = re.match(regex, fstring)
+    if not re_object:
+        return
+    else:
+        cns_props = re_object.groups()
+
+    cns_type = constraint_type[cns_props[0]]
+    const = owner.constraints.new(cns_type)
+
+    if cns_type == 'LIMIT_LOCATION':
+        const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
+        const.use_transform_limit = bool(cns_props[-2])
+        const.owner_space = constraint_space[cns_props[-1]] if bool(cns_props[-1]) else "LOCAL"
+        limits = cns_props[2]
+        limit = cns_props[3]
+        while 1:
+            if not limits:
+                break
+            if limit[0:2] == 'mX':
+                const.use_min_x = True
+                const.min_x = float(limit[2:])
+            if limit[0:2] == 'mY':
+                const.use_min_y = True
+                const.min_y = float(limit[2:])
+            if limit[0:2] == 'mZ':
+                const.use_min_z = True
+                const.min_z = float(limit[2:])
+            if limit[0:2] == 'MX':
+                const.use_max_x = True
+                const.max_x = float(limit[2:])
+            if limit[0:2] == 'MY':
+                const.use_max_y = True
+                const.max_y = float(limit[2:])
+            if limit[0:2] == 'MZ':
+                const.use_max_z = True
+                const.max_z = float(limit[2:])
+            limits = limits[:-len(limit)]
+            o = re.search('(([mM]{1}[XYZ]{1}[0-9]*\.?[0-9]+)+)*', limits)
+            limits = o.groups()[0]
+            limit = o.groups()[1]
+
+    if cns_type == 'LIMIT_ROTATION':
+        const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
+        const.use_transform_limit = bool(cns_props[-2])
+        const.owner_space = constraint_space[cns_props[-1]] if bool(cns_props[-1]) else "LOCAL"
+        limits = cns_props[2]
+        limit = cns_props[3]
+        while 1:
+            if not limits:
+                break
+            if limit[0:2] == 'mX':
+                const.use_limit_x = True
+                const.min_x = float(limit[2:])
+            if limit[0:2] == 'mY':
+                const.use_limit_y = True
+                const.min_y = float(limit[2:])
+            if limit[0:2] == 'mZ':
+                const.use_limit_z = True
+                const.min_z = float(limit[2:])
+            if limit[0:2] == 'MX':
+                const.use_limit_x = True
+                const.max_x = float(limit[2:])
+            if limit[0:2] == 'MY':
+                const.use_limit_y = True
+                const.max_y = float(limit[2:])
+            if limit[0:2] == 'MZ':
+                const.use_limit_z = True
+                const.max_z = float(limit[2:])
+            limits = limits[:-len(limit)]
+            o = re.search('(([mM]{1}[XYZ]{1}[0-9]*\.?[0-9]+)+)*', limits)
+            limits = o.groups()[0]
+            limit = o.groups()[1]
+
+    if cns_type == 'LIMIT_SCALE':
+        const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
+        const.use_transform_limit = bool(cns_props[-2])
+        const.owner_space = constraint_space[cns_props[-1]] if bool(cns_props[-1]) else "LOCAL"
+        limits = cns_props[2]
+        limit = cns_props[3]
+        while 1:
+            if not limits:
+                break
+            if limit[0:2] == 'mX':
+                const.use_min_x = True
+                const.min_x = float(limit[2:])
+            if limit[0:2] == 'mY':
+                const.use_min_y = True
+                const.min_y = float(limit[2:])
+            if limit[0:2] == 'mZ':
+                const.use_min_z = True
+                const.min_z = float(limit[2:])
+            if limit[0:2] == 'MX':
+                const.use_max_x = True
+                const.max_x = float(limit[2:])
+            if limit[0:2] == 'MY':
+                const.use_max_y = True
+                const.max_y = float(limit[2:])
+            if limit[0:2] == 'MZ':
+                const.use_max_z = True
+                const.max_z = float(limit[2:])
+            limits = limits[:-len(limit)]
+            o = re.search('(([mM]{1}[XYZ]{1}[0-9]*\.?[0-9]+)+)*', limits)
+            limits = o.groups()[0]
+            limit = o.groups()[1]
 
 
 def make_track_constraint_from_string(owner, target, subtarget, fstring):
