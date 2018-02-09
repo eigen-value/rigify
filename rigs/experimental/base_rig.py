@@ -51,3 +51,24 @@ class BaseRig(object):
 
     def generate(self):
         pass
+
+    @staticmethod
+    def add_parameters(params):
+        """
+        This method add more parameters to params
+        :param params: rigify_parameters of a pose_bone
+        :return:
+        """
+
+        pass
+
+    @staticmethod
+    def parameters_ui(layout, params):
+        """
+        This method draws the UI of the rigify_parameters defined on the pose_bone
+        :param layout:
+        :param params:
+        :return:
+        """
+
+        pass

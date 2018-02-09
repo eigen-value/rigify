@@ -4,6 +4,7 @@ from ...utils import create_sphere_widget, strip_def
 from ...utils import MetarigError, get_rig_type
 
 from .base_rig import BaseRig
+from .control_layers_generator import ControlLayersGenerator
 
 
 class ChainyRig(BaseRig):
@@ -18,6 +19,8 @@ class ChainyRig(BaseRig):
         self.chains = self.get_chains()
 
         self.orientation_bone = self.get_orientation_bone()
+
+        self.layer_generator = ControlLayersGenerator(self)
 
     def get_chains(self):
             """
@@ -191,7 +194,7 @@ class ChainyRig(BaseRig):
         bpy.ops.object.mode_set(mode='EDIT')
         edit_bones = self.obj.data.edit_bones
 
-        ### PARENT chain MCH-bones ###
+        # PARENT chain MCH-bones
         for subchain in self.bones['mch']:
             for i, name in enumerate(self.bones['mch'][subchain]):
                 mch_bone = edit_bones[name]
@@ -199,7 +202,7 @@ class ChainyRig(BaseRig):
                 if parent:
                     mch_bone.parent = edit_bones[parent]
 
-        ### PARENT subchain sibling controls ###
+        # PARENT subchain sibling controls
         for chain in self.chains:
             for subchain in self.chains[chain]:
                 for i, ctrl in enumerate(self.bones['ctrl'][strip_org(subchain)]):
@@ -207,6 +210,13 @@ class ChainyRig(BaseRig):
                     parent = self.get_ctrl_by_index(chain=strip_org(chain), index=i)
                     if parent:
                         ctrl_bone.parent = edit_bones[parent].parent
+
+    def assign_layers(self):
+        """
+        Look for primary and secondary ctrls and use self.layer_generator to assign
+        :return:
+        """
+        pass
 
     def make_constraints(self):
         """
@@ -217,7 +227,7 @@ class ChainyRig(BaseRig):
         bpy.ops.object.mode_set(mode='OBJECT')
         pose_bones = self.obj.pose.bones
 
-        ### Constrain DEF-bones ###
+        # Constrain DEF-bones
         for subchain in self.bones['def']:
             for i, name in enumerate(self.bones['def'][subchain]):
                 owner_pb = pose_bones[name]
@@ -245,14 +255,39 @@ class ChainyRig(BaseRig):
             for ctrl in self.bones['ctrl'][chain]:
                 create_sphere_widget(self.obj, ctrl)
 
-    def generate(self):
+    def make_drivers(self):
+        """
+        This method is used to make drivers and returns a snippet to be put in rig_ui.py
+        :return:
+        :rtype: list
+        """
+        return [""]
 
+    def cleanup(self):
+        pass
+
+    def generate(self):
         self.create_mch()
         self.create_def()
         self.create_controls()
         self.parent_bones()
 
+        # following passes should be made ONLY when ctrls are completely defined
+        self.assign_layers()
         self.make_constraints()
         self.create_widgets()
+        self.cleanup()
 
-        return [""]
+        rig_ui_script = self.make_drivers()
+
+        return rig_ui_script
+
+    @staticmethod
+    def add_parameters(params):
+
+        ControlLayersGenerator.add_layer_parameters(params)
+
+    @staticmethod
+    def parameters_ui(layout, params):
+
+        ControlLayersGenerator.add_layers_ui(layout, params)

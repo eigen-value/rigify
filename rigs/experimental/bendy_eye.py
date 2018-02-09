@@ -13,7 +13,7 @@ from ...utils import create_circle_widget, create_sphere_widget, create_widget, 
 from ...utils import MetarigError
 from ...utils import make_constraints_from_string, align_bone_y_axis
 from ..widgets import create_eye_widget, create_eyes_widget
-from .chainy_rig import ChainyRig
+from .meshy_rig import MeshyRig
 from .control_snapper import ControlSnapper
 from .control_layers_generator import ControlLayersGenerator
 
@@ -26,7 +26,7 @@ if is_selected(all_controls):
 """
 
 
-class Rig(ChainyRig):
+class Rig(MeshyRig):
 
     def __init__(self, obj, bone_name, params):
 
@@ -417,6 +417,9 @@ class Rig(ChainyRig):
         if 'eyefollow' in self.bones['eye_mch']:
             edit_bones[self.bones['eye_mch']['eyefollow']].parent = None
 
+    def aggregate_ctrls(self):
+        self.control_snapper.aggregate_ctrls(same_parent=False)
+
     def assign_layers(self):
 
         primary_ctrls = []
@@ -602,7 +605,28 @@ class Rig(ChainyRig):
         var.targets[0].id = self.obj
         var.targets[0].data_path = pose_bones[bone].path_from_id() + '[' + '"' + prop_name + '"' + ']'
 
-        return prop_name
+        # construct the script
+        if prop_name:
+            main_ctrl = ''
+            all_ctrls = []
+            all_ctrls.append(self.bones['eye_ctrl']['eye_target'])
+            all_ctrls.append(self.bones['eye_ctrl']['master_eye'])
+            if 'common' in self.bones['eye_ctrl']:
+                all_ctrls.append(self.bones['eye_ctrl']['common'])
+                if self.paired_eye:
+                    all_ctrls.extend(self.get_paired_eye_ctrls_name())
+                elif self.is_clustered():
+                    all_ctrls.extend(self.get_cluster_names(all_ctrls=True))
+                main_ctrl = self.bones['eye_ctrl']['common']
+            elif not self.paired_eye:
+                main_ctrl = self.bones['eye_ctrl']['eye_target']
+
+            controls_string = ", ".join(["'" + x + "'" for x in all_ctrls])
+
+            if main_ctrl:
+                return [script % (controls_string, main_ctrl, prop_name)]
+
+        return [""]
 
     def create_widgets(self):
 
@@ -644,42 +668,7 @@ class Rig(ChainyRig):
             edit_bones.remove(edit_bones[mch])
 
     def generate(self):
-        self.create_mch()
-        self.create_def()
-        self.create_controls()
-        self.parent_bones()
-
-        self.control_snapper.aggregate_ctrls(same_parent=False)
-
-        self.assign_layers()
-
-        self.make_constraints()
-        prop_name = self.make_drivers()
-        self.create_widgets()
-
-        self.cleanup()
-
-        if prop_name:
-            main_ctrl = ''
-            all_ctrls = []
-            all_ctrls.append(self.bones['eye_ctrl']['eye_target'])
-            all_ctrls.append(self.bones['eye_ctrl']['master_eye'])
-            if 'common' in self.bones['eye_ctrl']:
-                all_ctrls.append(self.bones['eye_ctrl']['common'])
-                if self.paired_eye:
-                    all_ctrls.extend(self.get_paired_eye_ctrls_name())
-                elif self.is_clustered():
-                    all_ctrls.extend(self.get_cluster_names(all_ctrls=True))
-                main_ctrl = self.bones['eye_ctrl']['common']
-            elif not self.paired_eye:
-                main_ctrl = self.bones['eye_ctrl']['eye_target']
-
-            controls_string = ", ".join(["'" + x + "'" for x in all_ctrls])
-
-            if main_ctrl:
-                return [script % (controls_string, main_ctrl, prop_name)]
-
-        return [""]
+        super().generate()
 
 
 def create_sample(obj):

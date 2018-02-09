@@ -12,7 +12,7 @@ from ...utils import MetarigError
 from ...utils import make_constraints_from_string
 from rna_prop_ui import rna_idprop_ui_prop_get
 from ..widgets import create_jaw_widget
-from .chainy_rig import ChainyRig
+from .meshy_rig import MeshyRig
 from .control_snapper import ControlSnapper
 from .control_layers_generator import ControlLayersGenerator
 
@@ -25,7 +25,7 @@ if is_selected(all_controls):
 """
 
 
-class Rig(ChainyRig):
+class Rig(MeshyRig):
 
     def __init__(self, obj, bone_name, params):
 
@@ -197,10 +197,6 @@ class Rig(ChainyRig):
         super().make_constraints()
 
     def make_drivers(self):
-        """
-        Adds properties and drivers driving jaw cns
-        :return:
-        """
 
         bpy.ops.object.mode_set(mode='OBJECT')
         pose_bones = self.obj.pose.bones
@@ -226,7 +222,12 @@ class Rig(ChainyRig):
             var.targets[0].id = self.obj
             var.targets[0].data_path = jaw_master.path_from_id() + '[' + '"' + prop_name + '"' + ']'
 
-        return prop_name
+        all_ctrls = self.control_snapper.flatten(self.bones['ctrl'])
+        all_ctrls.append(self.bones['jaw_ctrl']['jaw'])
+
+        controls_string = ", ".join(["'" + x + "'" for x in all_ctrls])
+
+        return [script % (controls_string, self.bones['jaw_ctrl']['jaw'], prop_name)]
 
     def parent_bones(self):
         """
@@ -283,6 +284,9 @@ class Rig(ChainyRig):
 
         super().parent_bones()
 
+    def aggregate_ctrls(self):
+        self.control_snapper.aggregate_ctrls(same_parent=False)
+
     def assign_layers(self):
 
         primary_ctrls = []
@@ -295,25 +299,7 @@ class Rig(ChainyRig):
         self.layer_generator.assign_layer(primary_ctrls, all_ctrls)
 
     def generate(self):
-
-        self.create_mch()
-        self.create_def()
-        self.create_controls()
-        self.parent_bones()
-
-        self.control_snapper.aggregate_ctrls(same_parent=False)
-
-        self.assign_layers()
-
-        self.make_constraints()
-        prop_name = self.make_drivers()
-        self.create_widgets()
-
-        all_ctrls = self.control_snapper.flatten(self.bones['ctrl'])
-        all_ctrls.append(self.bones['jaw_ctrl']['jaw'])
-
-        controls_string = ", ".join(["'" + x + "'" for x in all_ctrls])
-        return [script % (controls_string, self.bones['jaw_ctrl']['jaw'], prop_name)]
+        super().generate()
 
 
 def create_sample(obj):
