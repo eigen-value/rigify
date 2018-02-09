@@ -668,7 +668,7 @@ class Rig(MeshyRig):
             edit_bones.remove(edit_bones[mch])
 
     def generate(self):
-        super().generate()
+        return super().generate()
 
 
 def create_sample(obj):

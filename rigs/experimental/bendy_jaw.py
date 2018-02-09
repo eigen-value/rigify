@@ -169,6 +169,10 @@ class Rig(MeshyRig):
                 owner = pose_bones[j_m]
                 subtarget = self.bones['jaw_mch']['mouth_lock']
                 make_constraints_from_string(owner, self.obj, subtarget, "CT0.0WW0.0")
+            # add limits on upper_lip jaw_master
+            if j_m == self.bones['jaw_mch']['jaw_masters'][-2]:
+                make_constraints_from_string(owner, self.obj, "", "LLmY0MZ0#LRmX%fMX0" % (-3.14/2))
+
 
         lip_bones = []
         lip_bones.extend(self.mouth_bones['top'])
@@ -299,7 +303,7 @@ class Rig(MeshyRig):
         self.layer_generator.assign_layer(primary_ctrls, all_ctrls)
 
     def generate(self):
-        super().generate()
+        return super().generate()
 
 
 def create_sample(obj):
