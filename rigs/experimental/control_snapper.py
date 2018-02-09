@@ -98,8 +98,6 @@ class ControlSnapper:
                         self.bones['ctrl'][chain][i] = aggregate_ctrl
                         continue
 
-        return True
-
     def get_aggregate_name(self, aggregate):
         """
         Returns the collective name for an aggregatable bones name list

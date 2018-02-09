@@ -8,5 +8,3 @@ class Rig(MeshyRig):
 
     def generate(self):
         super().generate()
-
-        return [""]

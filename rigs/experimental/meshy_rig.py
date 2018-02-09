@@ -36,4 +36,3 @@ class MeshyRig(ChainyRig):
         rig_ui_script = self.make_drivers()
 
         return rig_ui_script
-
