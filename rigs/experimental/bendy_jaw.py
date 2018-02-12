@@ -7,7 +7,7 @@
 
 import bpy
 from ...utils import copy_bone
-from ...utils import org, strip_org, strip_def, make_deformer_name, connected_children_names, make_mechanism_name
+from ...utils import org, strip_org, strip_def, make_deformer_name, make_mechanism_name
 from ...utils import MetarigError
 from ...utils import make_constraints_from_string
 from rna_prop_ui import rna_idprop_ui_prop_get
@@ -30,7 +30,6 @@ class Rig(MeshyRig):
     def __init__(self, obj, bone_name, params):
 
         super().__init__(obj, bone_name, params)
-        self.control_snapper = ControlSnapper(self.obj, self.bones)
 
         self.main_mch = None
         self.get_jaw()
@@ -72,11 +71,11 @@ class Rig(MeshyRig):
             raise MetarigError("Exactly 4 disconnected chains (lips) must be parented to main bone")
 
         mouth_bones_dict = {'top': [], 'bottom': []}
-        self.lip_len = len(connected_children_names(self.obj, lip_bones[0])) + 1
+        self.lip_len = len(self.get_chain_bones(lip_bones[0]))
 
         # Check all half-lips have same length
         for lip in lip_bones:
-            if len(connected_children_names(self.obj, lip)) != self.lip_len - 1:
+            if len(self.get_chain_bones(lip)) != self.lip_len:
                 raise MetarigError("All lip chains must be the same length")
 
         m_b_head_positions = [edit_bones[name].head for name in lip_bones]

@@ -8,7 +8,7 @@ import re
 from mathutils import Vector
 from rna_prop_ui import rna_idprop_ui_prop_get
 from ...utils import copy_bone, flip_bone, put_bone
-from ...utils import org, strip_org, strip_def, make_deformer_name, connected_children_names, make_mechanism_name
+from ...utils import org, strip_org, strip_def, make_deformer_name, make_mechanism_name
 from ...utils import create_circle_widget, create_sphere_widget, create_widget, create_cube_widget
 from ...utils import MetarigError
 from ...utils import make_constraints_from_string, align_bone_y_axis, align_bone_z_axis
@@ -61,11 +61,11 @@ class Rig(MeshyRig):
             raise MetarigError("Exactly 2 disconnected chains (lids) must be parented to main bone")
 
         eyelids_bones_dict = {'top': [], 'bottom': []}
-        self.lid_len = len(connected_children_names(self.obj, lid_bones[0])) + 1
+        self.lid_len = len(self.get_chain_bones(lid_bones[0]))
 
         # Check both have same length
         for lid in lid_bones:
-            if len(connected_children_names(self.obj, lid)) != self.lid_len - 1:
+            if len(self.get_chain_bones(lid)) != self.lid_len:
                 raise MetarigError("All lid chains must be the same length")
 
         if edit_bones[lid_bones[0]].tail.z < edit_bones[lid_bones[1]].tail.z:
@@ -246,16 +246,14 @@ class Rig(MeshyRig):
         edit_bones[eye_tip_mch_name].length = 0.25 * edit_bones[eye_mch_name].length
 
         # top lid
-        top_lid_chain = [self.lid_bones['top'][0]]
-        top_lid_chain.extend(connected_children_names(self.obj, top_lid_chain[0]))
+        top_lid_chain = self.get_chain_bones(self.lid_bones['top'][0])
         for l_b in top_lid_chain:
             lid_m_name = copy_bone(self.obj, self.bones['org'][0], eye_mch_name)
             edit_bones[lid_m_name].tail = edit_bones[l_b].tail
             self.bones['eye_mch']['eyelid_top'].append(lid_m_name)
 
         # bottom lid
-        bottom_lid_chain = [self.lid_bones['bottom'][0]]
-        bottom_lid_chain.extend(connected_children_names(self.obj, bottom_lid_chain[0]))
+        bottom_lid_chain = self.get_chain_bones(self.lid_bones['bottom'][0])
         for l_b in bottom_lid_chain:
             lid_m_name = copy_bone(self.obj, self.bones['org'][0], eye_mch_name)
             edit_bones[lid_m_name].tail = edit_bones[l_b].tail
