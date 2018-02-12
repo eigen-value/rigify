@@ -11,8 +11,8 @@ from ...utils import copy_bone, flip_bone, put_bone
 from ...utils import org, strip_org, strip_def, make_deformer_name, connected_children_names, make_mechanism_name
 from ...utils import create_circle_widget, create_sphere_widget, create_widget, create_cube_widget
 from ...utils import MetarigError
-from ...utils import make_constraints_from_string, align_bone_y_axis
-from ..widgets import create_eye_widget, create_eyes_widget
+from ...utils import make_constraints_from_string, align_bone_y_axis, align_bone_z_axis
+from ..widgets import create_eye_widget, create_eyes_widget, create_widget_from_cluster
 from .meshy_rig import MeshyRig
 from .control_snapper import ControlSnapper
 from .control_layers_generator import ControlLayersGenerator
@@ -179,6 +179,15 @@ class Rig(MeshyRig):
 
         return names
 
+    def get_cluster_positions(self):
+        positions = []
+
+        for pb in self.obj.pose.bones:
+            if pb.rigify_type == 'experimental.bendy_eye' and pb.rigify_parameters.clustered_eye:
+                positions.append(pb.head)
+
+        return positions
+
     def get_cluster_data(self):
         """
         Returns the center position and common direction of an eye-cluster
@@ -191,24 +200,27 @@ class Rig(MeshyRig):
         positions = []
         sum_position = Vector((0, 0, 0))
 
-        direction = None
+        y_direction = None
+        z_direction = Vector((0, 0, 0))
 
         for name in self.get_cluster_names():
             did_generate_ctrl = strip_org(name) in edit_bones
             if not did_generate_ctrl:
                 # this is not the last eye in the cluster, delay
-                return [None, None]
+                return [None, None, None]
             else:
                 positions.append(edit_bones[strip_org(name)].head)
                 sum_position += edit_bones[strip_org(name)].head
-                direction = edit_bones[strip_org(name)].y_axis
+                y_direction = edit_bones[strip_org(name)].y_axis
+                z_direction += edit_bones[strip_org(name)].z_axis
 
-        if positions and direction:
+        if positions and y_direction and z_direction:
             position = sum_position / len(positions)
+            z_direction = z_direction / len(positions)
         else:
-            return [None, None]
+            return [None, None, None]
 
-        return [position, direction]
+        return [position, y_direction, z_direction]
 
     def create_mch(self):
 
@@ -292,6 +304,7 @@ class Rig(MeshyRig):
         put_bone(self.obj, eye_target, position)
         edit_bones[eye_target].length = 0.5 * edit_bones[self.base_bone].length
         align_bone_y_axis(self.obj, eye_target, Vector((0, 0, 1)))
+        align_bone_z_axis(self.obj, eye_target, edit_bones[self.base_bone].y_axis)
 
         # make standard controls
         super().create_controls()
@@ -336,8 +349,8 @@ class Rig(MeshyRig):
             direction = edit_bones[eye_target].y_axis + edit_bones[other_eye].y_axis
             create_common_ctrl = True
         elif self.is_clustered():
-            [position, direction] = self.get_cluster_data()
-            if position and direction:
+            [position, y_direction, z_direction] = self.get_cluster_data()
+            if position and y_direction:
                 create_common_ctrl = True
 
         if create_common_ctrl:
@@ -345,7 +358,8 @@ class Rig(MeshyRig):
             common_ctrl = copy_bone(self.obj, eye_target, common_ctrl)
             self.bones['eye_ctrl']['common'] = common_ctrl
             put_bone(self.obj, common_ctrl, position)
-            align_bone_y_axis(self.obj, common_ctrl, direction)
+            align_bone_y_axis(self.obj, common_ctrl, y_direction)
+            align_bone_z_axis(self.obj, common_ctrl, z_direction)
 
         for ctrl in self.bones['ctrl'][top_chain]:
             align_bone_y_axis(self.obj, ctrl, axis)
@@ -568,7 +582,7 @@ class Rig(MeshyRig):
     def make_drivers(self):
 
         if not self.needs_driver:
-            return ''
+            return ['']
 
         bpy.ops.object.mode_set(mode='OBJECT')
         pose_bones = self.obj.pose.bones
@@ -578,7 +592,7 @@ class Rig(MeshyRig):
             if 'common' in self.bones['eye_ctrl'] and 'eyefollow' in self.bones['eye_mch']:
                 bone = self.bones['eye_ctrl']['common']
             else:
-                return ''
+                return ['']
         else:
             bone = self.bones['eye_ctrl']['eye_target']
 
@@ -652,7 +666,11 @@ class Rig(MeshyRig):
 
         if 'common' in self.bones['eye_ctrl']:
             common_ctrl = self.bones['eye_ctrl']['common']
-            create_eyes_widget(self.obj, common_ctrl)
+            if self.is_clustered():
+                cluster = self.get_cluster_positions()
+                create_widget_from_cluster(self.obj, common_ctrl, cluster)
+            else:
+                create_eyes_widget(self.obj, common_ctrl)
 
         super().create_widgets()
 
@@ -860,6 +878,10 @@ def add_parameters(params):
         context = bpy.context
         obj = context.active_object
         pb = context.active_pose_bone
+
+        if not pb:
+            return
+
         name = pb.name
 
         if value not in obj.pose.bones or obj.pose.bones[value].rigify_type != 'experimental.bendy_eye':
