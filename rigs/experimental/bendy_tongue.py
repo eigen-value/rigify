@@ -104,6 +104,8 @@ class Rig(ChainyRig):
 
     def create_widgets(self):
 
+        bpy.ops.object.mode_set(mode='OBJECT')
+
         tongue_master = self.bones['tongue_ctrl']['tongue_master']
         create_jaw_widget(self.obj, tongue_master)
 
