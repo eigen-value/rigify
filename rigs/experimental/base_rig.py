@@ -52,6 +52,26 @@ class BaseRig(object):
     def generate(self):
         pass
 
+    def flatten(self, bones):
+        """
+        Flattens a bones dictionary
+        :param bones:
+        :return:
+        :rtype: list
+        """
+
+        all_bones = []
+
+        if isinstance(bones, dict):
+            for key in bones:
+                all_bones.extend(self.flatten(bones[key]))
+            return all_bones
+        else:
+            return bones
+
+    def get_all_ctrls(self):
+        return self.flatten(self.bones['ctrl'])
+
     @staticmethod
     def add_parameters(params):
         """

@@ -1,5 +1,5 @@
 import bpy
-from ...utils import connected_children_names, strip_org, make_mechanism_name, copy_bone, make_deformer_name, put_bone
+from ...utils import strip_org, make_mechanism_name, copy_bone, make_deformer_name, put_bone
 from ...utils import create_sphere_widget, strip_def
 from ...utils import MetarigError, get_rig_type
 
@@ -12,9 +12,11 @@ class ChainyRig(BaseRig):
     CTRL_SCALE = 0.05
     MCH_SCALE = 0.3
 
-    def __init__(self, obj, bone_name, params):
+    def __init__(self, obj, bone_name, params, single=False):
 
         super().__init__(obj, bone_name, params)
+
+        self.single = single
 
         self.chains = self.get_chains()
 
@@ -33,12 +35,48 @@ class ChainyRig(BaseRig):
 
             chains = dict()
 
-            for name in self.bones['org'][1:]:
-                eb = edit_bones[name]
-                if not eb.use_connect and eb.parent == edit_bones[self.base_bone]:
-                    chains[name] = self.get_subchains(name)
+            if not self.single:
+                for name in self.bones['org'][1:]:
+                    eb = edit_bones[name]
+                    if not eb.use_connect and eb.parent == edit_bones[self.base_bone]:
+                        chains[name] = self.get_subchains(name)
+            else:
+                name = self.bones['org'][0]
+                chains[name] = self.get_subchains(name)
 
             return chains
+
+    def get_chain_bones(self, first_name):
+        """
+        Get all the bone names belonging to a chain or subchain starting with first_name
+        :param first_name:
+        :return:
+        """
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
+
+        chain = [first_name]
+        # chain.extend(connected_children_names(self.obj, first_name)) DON'T USE THIS it works BAD
+
+        bone = edit_bones[first_name]
+
+        while True:
+            connects = 0
+            con_name = ""
+
+            for child in bone.children:
+                if child.use_connect:
+                    connects += 1
+                    con_name = child.name
+
+            if connects == 1:
+                chain += [con_name]
+                bone = edit_bones[con_name]
+            else:
+                break
+
+        return chain
 
     def get_subchains(self, name):
         bpy.ops.object.mode_set(mode='EDIT')
@@ -46,11 +84,11 @@ class ChainyRig(BaseRig):
 
         subchains = []
 
-        chain = [name]
-        chain.extend(connected_children_names(self.obj, name))
+        chain = self.get_chain_bones(name)
+
         for bone in edit_bones[name].children:
             if self.obj.pose.bones[bone.name].rigify_type == "" and not bone.use_connect:
-                if len(connected_children_names(self.obj, bone.name)) != len(chain) - 1:
+                if len(self.get_chain_bones(bone.name)) != len(chain):
                     raise MetarigError("Subchains of chain starting with %s are not the same length! assign a rig_type/"
                                        "unconnected children of main bone of chain" % name)
                 else:
@@ -91,8 +129,8 @@ class ChainyRig(BaseRig):
         bpy.ops.object.mode_set(mode='EDIT')
         edit_bones = self.obj.data.edit_bones
 
-        chain = [first_name]
-        chain.extend(connected_children_names(self.obj, first_name))
+        chain = self.get_chain_bones(first_name)
+
         self.bones['mch'][strip_org(first_name)] = []
 
         for chain_bone in chain:
@@ -119,8 +157,8 @@ class ChainyRig(BaseRig):
         bpy.ops.object.mode_set(mode='EDIT')
         edit_bones = self.obj.data.edit_bones
 
-        chain = [first_name]
-        chain.extend(connected_children_names(self.obj, first_name))
+        chain = self.get_chain_bones(first_name)
+
         self.bones['def'][strip_org(first_name)] = []
 
         for chain_bone in chain:
@@ -146,8 +184,8 @@ class ChainyRig(BaseRig):
         bpy.ops.object.mode_set(mode='EDIT')
         edit_bones = self.obj.data.edit_bones
 
-        chain = [first_name]
-        chain.extend(connected_children_names(self.obj, first_name))
+        chain = self.get_chain_bones(first_name)
+
         self.bones['ctrl'][strip_org(first_name)] = []
 
         for chain_bone in chain:
