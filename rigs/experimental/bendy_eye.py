@@ -169,9 +169,11 @@ class Rig(MeshyRig):
         """
 
         names = []
+        pose_bones = self.obj.pose.bones
 
-        for pb in self.obj.pose.bones:
-            if pb.rigify_type == 'experimental.bendy_eye' and pb.rigify_parameters.clustered_eye:
+        for pb in pose_bones:
+            if pb.rigify_type == 'experimental.bendy_eye' and pb.rigify_parameters.clustered_eye\
+                    and pb.parent == pose_bones[self.base_bone].parent:
                 base_name = strip_org(pb.name)
                 names.append(base_name)
                 if all_ctrls:
@@ -182,8 +184,11 @@ class Rig(MeshyRig):
     def get_cluster_positions(self):
         positions = []
 
-        for pb in self.obj.pose.bones:
-            if pb.rigify_type == 'experimental.bendy_eye' and pb.rigify_parameters.clustered_eye:
+        pose_bones = self.obj.pose.bones
+
+        for pb in pose_bones:
+            if pb.rigify_type == 'experimental.bendy_eye' and pb.rigify_parameters.clustered_eye \
+                    and pb.parent == pose_bones[self.base_bone].parent:
                 positions.append(pb.head)
 
         return positions
