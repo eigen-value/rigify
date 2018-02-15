@@ -282,6 +282,17 @@ class Rig(MeshyRig):
         super().create_mch()
 
     def create_def(self):
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
+
+        self.bones['eye_def'] = dict()
+
+        if self.params.make_deform:
+            main_eye_def = make_deformer_name(strip_org(self.bones['org'][0]))
+            main_eye_def = copy_bone(self.obj, self.bones['org'][0], main_eye_def)
+            self.bones['eye_def']['eyeball_def'] = main_eye_def
+
         super().create_def()
 
     def create_controls(self):
@@ -299,6 +310,11 @@ class Rig(MeshyRig):
         eye_ctrl_name = "master_" + strip_org(self.bones['org'][0])
         eye_ctrl = copy_bone(self.obj, self.bones['org'][0], eye_ctrl_name)
         self.bones['eye_ctrl']['master_eye'] = eye_ctrl
+
+        if self.params.make_control:
+            eye_hook_name = strip_org(self.bones['org'][0]) + "_hook"
+            eye_hook = copy_bone(self.obj, self.bones['org'][0], eye_hook_name)
+            self.bones['eye_ctrl']['eye_hook'] = eye_hook
 
         eye_target_name = strip_org(self.bones['org'][0])
         eye_target = copy_bone(self.obj, self.orientation_bone, eye_target_name)
@@ -434,6 +450,10 @@ class Rig(MeshyRig):
         if 'eyefollow' in self.bones['eye_mch']:
             edit_bones[self.bones['eye_mch']['eyefollow']].parent = None
 
+        if 'eye_hook' in self.bones['eye_ctrl']:
+            eye_hook = self.bones['eye_ctrl']['eye_hook']
+            edit_bones[eye_hook].parent = edit_bones[self.bones['eye_mch']['eye_master']]
+
     def aggregate_ctrls(self):
         self.control_snapper.aggregate_ctrls(same_parent=False)
 
@@ -558,6 +578,12 @@ class Rig(MeshyRig):
                 influence -= 0.1
                 j += 1
 
+        if 'eyeball_def' in self.bones['eye_def']:
+            owner = pose_bones[self.bones['eye_def']['eyeball_def']]
+            target = self.obj
+            subtarget = self.bones['eye_mch']['eye_master']
+            make_constraints_from_string(owner, target, subtarget, "CT1.0")
+
         # make the standard chainy rig constraints
         super().make_constraints()
 
@@ -656,6 +682,11 @@ class Rig(MeshyRig):
         # eye target
         eye_target = self.bones['eye_ctrl']['eye_target']
         create_eye_widget(self.obj, eye_target)
+
+        # eye hook
+        if 'eye_hook' in self.bones['eye_ctrl']:
+            eye_target = self.bones['eye_ctrl']['eye_hook']
+            create_circle_widget(self.obj, eye_target, head_tail=0.5)
 
         # top lid master
         if 'top_lid_master' in self.bones['eye_ctrl']:
@@ -877,6 +908,18 @@ def add_parameters(params):
         get=get_clustered
     )
 
+    params.make_control = bpy.props.BoolProperty(
+        name="Control",
+        default=True,
+        description="Create a control bone for the copy"
+    )
+
+    params.make_deform = bpy.props.BoolProperty(
+        name="Deform",
+        default= True,
+        description="Create a deform bone for the copy"
+    )
+
     def set_paired(self, value):
         context = bpy.context
         obj = context.active_object
@@ -924,11 +967,16 @@ def parameters_ui(layout, params):
     r.prop(params, "add_eyefollow")
 
     r = layout.row()
+    r.prop(params, "make_control")
+
+    r = layout.row()
+    r.prop(params, "make_deform")
+
+    r = layout.row()
     r.prop(params, "clustered_eye")
 
     r = layout.row()
     r.prop(params, "paired_eye")
-
     if params.clustered_eye:
         r.enabled = False
 
