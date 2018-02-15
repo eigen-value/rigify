@@ -1344,7 +1344,7 @@ def make_constraints_from_string(owner, target, subtarget, fstring):
 
     transform_type = ['CL', 'CR', 'CS', 'CT']
     limit_type = ['LL', 'LR', 'LS']
-    track_type = ['DT', 'TT']
+    track_type = ['DT', 'TT', 'ST']
     relationship_type = ['PA']
 
     for cns in cns_blocks:
@@ -1406,9 +1406,9 @@ def make_transform_constraint_from_string(owner, target, subtarget, fstring):
 
 def make_limit_constraint_from_string(owner, fstring):
 
-    regular_expressions = {'LL': '^(LL)([0-9]*\.?[0-9]+)*(([mM]{1}[XYZ]{1}[0-9]*\.?[0-9]+)+)*(T)*(W|L|P)*$',
-                           'LR': '^(LR)([0-9]*\.?[0-9]+)*(([mM]{1}[XYZ]{1}[0-9]*\.?[0-9]+)+)*(T)*(W|L|P)*$',
-                           'LS': '^(LS)([0-9]*\.?[0-9]+)*(([mM]{1}[XYZ]{1}[0-9]*\.?[0-9]+)+)*(T)*(W|L|P)*$'}
+    regular_expressions = {'LL': '^(LL)([0-9]*\.?[0-9]+)*(([mM]{1}[XYZ]{1}-?[0-9]*\.?[0-9]+)+)*(T)*(W|L|P)*$',
+                           'LR': '^(LR)([0-9]*\.?[0-9]+)*(([mM]{1}[XYZ]{1}-?[0-9]*\.?[0-9]+)+)*(T)*(W|L|P)*$',
+                           'LS': '^(LS)([0-9]*\.?[0-9]+)*(([mM]{1}[XYZ]{1}-?[0-9]*\.?[0-9]+)+)*(T)*(W|L|P)*$'}
 
     # regex is (type)(influence*)(limits:mXmYmZMXMYMZxx.xxx*)(use_transform_limit*)(owner_space*)
     regex = regular_expressions[fstring[0:2]]
@@ -1453,7 +1453,7 @@ def make_limit_constraint_from_string(owner, fstring):
                 const.use_max_z = True
                 const.max_z = float(limit[2:])
             limits = limits[:-len(limit)]
-            o = re.search('(([mM]{1}[XYZ]{1}[0-9]*\.?[0-9]+)+)*', limits)
+            o = re.search('(([mM]{1}[XYZ]{1}-?[0-9]*\.?[0-9]+)+)*', limits)
             limits = o.groups()[0]
             limit = o.groups()[1]
 
@@ -1485,7 +1485,7 @@ def make_limit_constraint_from_string(owner, fstring):
                 const.use_limit_z = True
                 const.max_z = float(limit[2:])
             limits = limits[:-len(limit)]
-            o = re.search('(([mM]{1}[XYZ]{1}[0-9]*\.?[0-9]+)+)*', limits)
+            o = re.search('(([mM]{1}[XYZ]{1}-?[0-9]*\.?[0-9]+)+)*', limits)
             limits = o.groups()[0]
             limit = o.groups()[1]
 
@@ -1517,7 +1517,7 @@ def make_limit_constraint_from_string(owner, fstring):
                 const.use_max_z = True
                 const.max_z = float(limit[2:])
             limits = limits[:-len(limit)]
-            o = re.search('(([mM]{1}[XYZ]{1}[0-9]*\.?[0-9]+)+)*', limits)
+            o = re.search('(([mM]{1}[XYZ]{1}-?[0-9]*\.?[0-9]+)+)*', limits)
             limits = o.groups()[0]
             limit = o.groups()[1]
 
@@ -1525,9 +1525,9 @@ def make_limit_constraint_from_string(owner, fstring):
 def make_track_constraint_from_string(owner, target, subtarget, fstring):
 
     # regex is (type)(influence*)(track_axis*)(space-space*)(head_tail*)
-    regex = '^(TT|DT)([0-9]*\.?[0-9]+)*(-*[XYZ])*([LWP]{2})*([0-9]*\.?[0-9]+)*$'
+    regex = '^(TT|DT|ST)([0-9]*\.?[0-9]+)*(-*[XYZ])*([LWP]{2})*([0-9]*\.?[0-9]+)*$'
 
-    constraint_type = {'DT': 'DAMPED_TRACK', 'TT': 'TRACK_TO'}
+    constraint_type = {'DT': 'DAMPED_TRACK', 'TT': 'TRACK_TO', 'ST': 'STRETCH_TO'}
     constraint_space = {'L': 'LOCAL', 'W': 'WORLD', 'P': 'POSE'}
     track_axis = {'X': 'TRACK_X', '-X': 'TRACK_NEGATIVE_X', 'Y': 'TRACK_Y', '-Y': 'TRACK_NEGATIVE_Y',
                   'Z': 'TRACK_Z', '-Z': 'TRACK_NEGATIVE_Z'}
@@ -1553,6 +1553,10 @@ def make_track_constraint_from_string(owner, target, subtarget, fstring):
         const.track_axis = track_axis[cns_props[2]] if bool(cns_props[2]) else "TRACK_Y"
         const.target_space = constraint_space[cns_props[3][0]] if bool(cns_props[3]) else "LOCAL"
         const.owner_space = constraint_space[cns_props[3][1]] if bool(cns_props[3]) else "LOCAL"
+        const.head_tail = float(cns_props[4]) if bool(cns_props[4]) else 0.0
+
+    if cns_type == 'STRETCH_TO':
+        const.influence = float(cns_props[1]) if bool(cns_props[1]) else 1.0
         const.head_tail = float(cns_props[4]) if bool(cns_props[4]) else 0.0
 
 
