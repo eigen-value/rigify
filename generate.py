@@ -119,6 +119,7 @@ def generate_rig(context, metarig):
     # Remove wgts if force update is set
     wgts_group_name = "WGTS_" + (rig_old_name or obj.name)
     if wgts_group_name in scene.objects and id_store.rigify_force_widget_update:
+        bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
         for i, lyr in enumerate(WGT_LAYERS):
             if lyr:
