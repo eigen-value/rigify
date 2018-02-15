@@ -26,12 +26,12 @@ class Rig(ChainyRig):
         self.bones['tongue_mch'] = {}
         self.bones['tongue_mch']['tongue_tip'] = []
 
-        for i, mch in enumerate(self.bones['mch'][strip_org(self.base_bone)]):
+        for i, mch in enumerate(self.bones['mch'][strip_org(self.base_bone)][:-1]):
             if i == 0:
                 edit_bones[mch].length = edit_bones[self.base_bone].length
                 flip_bone(self.obj, mch)
                 self.bones['tongue_mch']['tongue_tip'].append(mch)
-            elif i == 1:
+            else:
                 put_bone(self.obj, mch, edit_bones[self.base_bone].tail)
                 edit_bones[mch].tail = edit_bones[self.base_bone].head
                 self.bones['tongue_mch']['tongue_tip'].append(mch)
@@ -95,12 +95,13 @@ class Rig(ChainyRig):
             pose_bones[def_bone].constraints.remove(pose_bones[def_bone].constraints[0])
 
         influence_step = 1 / len(self.bones['org'])
+        influence = influence_step
 
         for mch in reversed(self.bones['tongue_mch']['tongue_tip']):
             owner = pose_bones[mch]
             subtarget = self.bones['tongue_ctrl']['tongue_master']
-            make_constraints_from_string(owner, self.obj, subtarget, "CT%sWW0.0" % influence_step)
-            influence_step += influence_step
+            make_constraints_from_string(owner, self.obj, subtarget, "CT%sWW0.0" % influence)
+            influence += influence_step
 
     def create_widgets(self):
 
