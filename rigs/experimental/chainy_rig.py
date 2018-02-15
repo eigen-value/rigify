@@ -306,9 +306,9 @@ class ChainyRig(BaseRig):
         self.assign_layers()
         self.make_constraints()
         self.create_widgets()
-        self.cleanup()
-
         rig_ui_script = self.make_drivers()
+
+        self.cleanup()
 
         return rig_ui_script
 
