@@ -7,4 +7,4 @@ class Rig(MeshyRig):
         super().__init__(obj, bone_name, params)
 
     def generate(self):
-        super().generate()
+        return super().generate()

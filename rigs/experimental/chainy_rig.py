@@ -2,6 +2,7 @@ import bpy
 from ...utils import strip_org, make_mechanism_name, copy_bone, make_deformer_name, put_bone
 from ...utils import create_sphere_widget, strip_def
 from ...utils import MetarigError, get_rig_type
+from ...utils import make_constraints_from_string
 
 from .base_rig import BaseRig
 from .control_layers_generator import ControlLayersGenerator
@@ -269,22 +270,13 @@ class ChainyRig(BaseRig):
         for subchain in self.bones['def']:
             for i, name in enumerate(self.bones['def'][subchain]):
                 owner_pb = pose_bones[name]
-
                 subtarget = make_mechanism_name(strip_def(name))
-                const = owner_pb.constraints.new('COPY_LOCATION')
-                const.target = self.obj
-                const.subtarget = subtarget
+                make_constraints_from_string(owner_pb, self.obj, subtarget, "CT1.0WW")
 
                 tail_subtarget = self.get_ctrl_by_index(chain=subchain, index=i+1)
 
                 if tail_subtarget:
-                    const = owner_pb.constraints.new('DAMPED_TRACK')
-                    const.target = self.obj
-                    const.subtarget = tail_subtarget
-
-                    const = owner_pb.constraints.new('STRETCH_TO')
-                    const.target = self.obj
-                    const.subtarget = tail_subtarget
+                    make_constraints_from_string(owner_pb, self.obj, tail_subtarget, "DT1.0#ST1.0")
 
     def create_widgets(self):
 
