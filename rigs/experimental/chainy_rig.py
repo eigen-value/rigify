@@ -1,8 +1,6 @@
 import bpy
-from ...utils import strip_org, make_mechanism_name, copy_bone, make_deformer_name, put_bone
-from ...utils import create_sphere_widget, strip_def
+from ...utils import strip_org
 from ...utils import MetarigError, get_rig_type
-from ...utils import make_constraints_from_string
 
 from .chain import Chain, ChainType
 from .base_rig import BaseRig

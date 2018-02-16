@@ -214,9 +214,10 @@ class Chain:
                 if tail_subtarget:
                     make_constraints_from_string(owner_pb, self.obj, tail_subtarget, "DT1.0#ST1.0")
 
-    def create_widgets(self, ctrl_wgt_function=create_sphere_widget, *args, **kwargs):
+    def create_widgets(self, ctrl_wgt_function=create_sphere_widget, **kwargs):
         """
-        Creates widgets
+        Creates ctrl widgets
+        A custom create wgt function can be passed as argument together with its own kwargs
         :return:
         """
 
@@ -228,7 +229,7 @@ class Chain:
         if self.chain_type == ChainType.TYPE_MCH_BASED:
             ctrl_bones = self.get_chain_bones_by_type('ctrl')
             for name in ctrl_bones:
-                ctrl_wgt_function(self.obj, name, *args, **kwargs)
+                ctrl_wgt_function(self.obj, name, **kwargs)
 
     def get_chain_bones_by_type(self, bone_type='org'):
         """
