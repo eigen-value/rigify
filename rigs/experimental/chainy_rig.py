@@ -4,24 +4,23 @@ from ...utils import create_sphere_widget, strip_def
 from ...utils import MetarigError, get_rig_type
 from ...utils import make_constraints_from_string
 
+from .chain import Chain, ChainType
 from .base_rig import BaseRig
 from .control_layers_generator import ControlLayersGenerator
 
 
 class ChainyRig(BaseRig):
 
-    CTRL_SCALE = 0.05
-    MCH_SCALE = 0.3
-
-    def __init__(self, obj, bone_name, params, single=False):
+    def __init__(self, obj, bone_name, params, single=False, chain_type=None):
 
         super().__init__(obj, bone_name, params)
 
         self.single = single
-
-        self.chains = self.get_chains()
-
+        self.chain_type = chain_type or ChainType.TYPE_MCH_BASED
         self.orientation_bone = self.get_orientation_bone()
+
+        self.chain_objects = dict()
+        self.chains = self.get_chains()
 
         self.layer_generator = ControlLayersGenerator(self)
 
@@ -40,9 +39,13 @@ class ChainyRig(BaseRig):
                 for name in self.bones['org'][1:]:
                     eb = edit_bones[name]
                     if not eb.use_connect and eb.parent == edit_bones[self.base_bone]:
+                        chain = Chain(self.obj, name, self.orientation_bone, chain_type=self.chain_type)
+                        self.chain_objects[chain.base_name] = chain
                         chains[name] = self.get_subchains(name)
             else:
                 name = self.bones['org'][0]
+                chain = Chain(self.obj, name, self.orientation_bone, chain_type=self.chain_type)
+                self.chain_objects[chain.base_name] = chain
                 chains[name] = self.get_subchains(name)
 
             return chains
@@ -80,20 +83,29 @@ class ChainyRig(BaseRig):
         return chain
 
     def get_subchains(self, name):
+        """
+
+        :param chain_object:
+        :type chain_object: Chain
+        :return:
+        """
+
         bpy.ops.object.mode_set(mode='EDIT')
         edit_bones = self.obj.data.edit_bones
 
         subchains = []
 
-        chain = self.get_chain_bones(name)
+        chain = self.get_chain_object_by_name(name)
 
         for bone in edit_bones[name].children:
             if self.obj.pose.bones[bone.name].rigify_type == "" and not bone.use_connect:
-                if len(self.get_chain_bones(bone.name)) != len(chain):
+                subchain = Chain(self.obj, bone.name, self.orientation_bone, chain_type=chain.chain_type, parent=chain)
+                if subchain.length != chain.length:
                     raise MetarigError("Subchains of chain starting with %s are not the same length! assign a rig_type/"
                                        "unconnected children of main bone of chain" % name)
                 else:
                     subchains.append(bone.name)
+                    self.chain_objects[subchain.base_name] = subchain
 
         return subchains
 
@@ -120,94 +132,56 @@ class ChainyRig(BaseRig):
 
         return orientation_bone.name
 
-    def make_mch_chain(self, first_name):
+    def get_chain_object_by_name(self, name):
         """
-        Create all MCHs needed on a single chain
-        :param first_name: name of the first bone in the chain
+        returns a chain object by the name of the first org w/o ORG prefix
+        :return:
+        :rtype: Chain
+        """
+
+        name = strip_org(name)
+        return self.chain_objects[name]
+
+    def set_chain_active(self, name, active=True):
+        """
+        Activates / deactivates a chain. Inactive chains will not generate independently
+        :param name:
+        :param active:
         :return:
         """
 
-        bpy.ops.object.mode_set(mode='EDIT')
-        edit_bones = self.obj.data.edit_bones
-
-        chain = self.get_chain_bones(first_name)
-
-        self.bones['mch'][strip_org(first_name)] = []
-
-        for chain_bone in chain:
-            mch = copy_bone(self.obj, chain_bone, assign_name=make_mechanism_name(strip_org(chain_bone)))
-            edit_bones[mch].parent = None
-            edit_bones[mch].length *= self.MCH_SCALE
-            self.bones['mch'][strip_org(first_name)].append(mch)
+        chain = self.get_chain_object_by_name(name)
+        chain.active = active
 
     def create_mch(self):
 
         for name in self.chains:
-            self.make_mch_chain(name)
+            chain = self.get_chain_object_by_name(name)
+            self.bones['mch'][chain.base_name] = chain.make_mch_chain()
 
             for subname in self.chains[name]:
-                self.make_mch_chain(subname)
-
-    def make_def_chain(self, first_name):
-        """
-        Creates all DEFs in chain
-        :param first_name:
-        :return:
-        """
-
-        bpy.ops.object.mode_set(mode='EDIT')
-        edit_bones = self.obj.data.edit_bones
-
-        chain = self.get_chain_bones(first_name)
-
-        self.bones['def'][strip_org(first_name)] = []
-
-        for chain_bone in chain:
-            def_bone = copy_bone(self.obj, chain_bone, assign_name=make_deformer_name(strip_org(chain_bone)))
-            edit_bones[def_bone].parent = None
-            self.bones['def'][strip_org(first_name)].append(def_bone)
+                subchain = self.get_chain_object_by_name(subname)
+                self.bones['mch'][subchain.base_name] = subchain.make_mch_chain()
 
     def create_def(self):
 
         for name in self.chains:
-            self.make_def_chain(name)
+            chain = self.get_chain_object_by_name(name)
+            self.bones['def'][chain.base_name] = chain.make_def_chain()
 
             for subname in self.chains[name]:
-                self.make_def_chain(subname)
-
-    def make_ctrl_chain(self, first_name):
-        """
-        Create all ctrls in chain
-        :param first_name:
-        :return:
-        """
-
-        bpy.ops.object.mode_set(mode='EDIT')
-        edit_bones = self.obj.data.edit_bones
-
-        chain = self.get_chain_bones(first_name)
-
-        self.bones['ctrl'][strip_org(first_name)] = []
-
-        for chain_bone in chain:
-            ctrl = copy_bone(self.obj, self.orientation_bone, assign_name=strip_org(chain_bone))
-            put_bone(self.obj, ctrl, edit_bones[chain_bone].head)
-            edit_bones[ctrl].length = edit_bones[self.orientation_bone].length * self.CTRL_SCALE
-            self.bones['ctrl'][strip_org(first_name)].append(ctrl)
-
-        last_name = chain[-1]
-        last_ctrl = copy_bone(self.obj, self.orientation_bone, assign_name=strip_org(last_name))
-        put_bone(self.obj, last_ctrl, edit_bones[last_name].tail)
-        edit_bones[last_ctrl].length = edit_bones[self.orientation_bone].length * self.CTRL_SCALE
-        self.bones['ctrl'][strip_org(first_name)].append(last_ctrl)
+                subchain = self.get_chain_object_by_name(subname)
+                self.bones['def'][subchain.base_name] = subchain.make_def_chain()
 
     def create_controls(self):
 
         for name in self.chains:
-            self.make_ctrl_chain(name)
+            chain = self.get_chain_object_by_name(name)
+            self.bones['ctrl'][chain.base_name] = chain.make_ctrl_chain()
 
             for subname in self.chains[name]:
-                self.make_ctrl_chain(subname)
+                subchain = self.get_chain_object_by_name(subname)
+                self.bones['ctrl'][subchain.base_name] = subchain.make_ctrl_chain()
 
     def get_ctrl_by_index(self, chain, index):
         """
@@ -233,20 +207,17 @@ class ChainyRig(BaseRig):
         bpy.ops.object.mode_set(mode='EDIT')
         edit_bones = self.obj.data.edit_bones
 
-        # PARENT chain MCH-bones
-        for subchain in self.bones['mch']:
-            for i, name in enumerate(self.bones['mch'][subchain]):
-                mch_bone = edit_bones[name]
-                parent = self.get_ctrl_by_index(chain=subchain, index=i)
-                if parent:
-                    mch_bone.parent = edit_bones[parent]
+        for chain_object in self.chain_objects:
+            self.chain_objects[chain_object].parent_bones()
 
         # PARENT subchain sibling controls
         for chain in self.chains:
             for subchain in self.chains[chain]:
-                for i, ctrl in enumerate(self.bones['ctrl'][strip_org(subchain)]):
+                subchain_object = self.get_chain_object_by_name(subchain)
+                subchain_ctrls = subchain_object.get_chain_bones_by_type('ctrl')
+                for i, ctrl in enumerate(subchain_ctrls):
                     ctrl_bone = edit_bones[ctrl]
-                    parent = self.get_ctrl_by_index(chain=strip_org(chain), index=i)
+                    parent = subchain_object.get_chain_bone_by_index(index=i, bone_type='ctrl')
                     if parent:
                         ctrl_bone.parent = edit_bones[parent].parent
 
@@ -264,26 +235,16 @@ class ChainyRig(BaseRig):
         """
 
         bpy.ops.object.mode_set(mode='OBJECT')
-        pose_bones = self.obj.pose.bones
 
-        # Constrain DEF-bones
-        for subchain in self.bones['def']:
-            for i, name in enumerate(self.bones['def'][subchain]):
-                owner_pb = pose_bones[name]
-                subtarget = make_mechanism_name(strip_def(name))
-                make_constraints_from_string(owner_pb, self.obj, subtarget, "CT1.0WW")
-
-                tail_subtarget = self.get_ctrl_by_index(chain=subchain, index=i+1)
-
-                if tail_subtarget:
-                    make_constraints_from_string(owner_pb, self.obj, tail_subtarget, "DT1.0#ST1.0")
+        for chain_object in self.chain_objects:
+            self.chain_objects[chain_object].make_constraints()
 
     def create_widgets(self):
 
         bpy.ops.object.mode_set(mode='OBJECT')
-        for chain in self.bones['ctrl']:
-            for ctrl in self.bones['ctrl'][chain]:
-                create_sphere_widget(self.obj, ctrl)
+
+        for chain_object in self.chain_objects:
+            self.chain_objects[chain_object].create_widgets()
 
     def make_drivers(self):
         """

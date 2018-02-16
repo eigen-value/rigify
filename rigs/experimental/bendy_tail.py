@@ -10,8 +10,7 @@ from ..widgets import create_ballsocket_widget
 
 class Rig(ChainyRig):
 
-    TWEAK_SCALE = 0.5
-    CTRL_SCALE = 1.0
+    TWEAK_SCALE = 0.5       # tweak size relative to orientation bone
 
     def __init__(self, obj, bone_name, params):
         super().__init__(obj, bone_name, params, single=True)
