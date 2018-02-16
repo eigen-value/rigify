@@ -365,7 +365,8 @@ class Rig(MeshyRig):
         if self.paired_eye and strip_org(self.paired_eye) in edit_bones:
             other_eye = strip_org(self.paired_eye)
             position = (edit_bones[eye_target].head + edit_bones[other_eye].head) / 2
-            direction = edit_bones[eye_target].y_axis + edit_bones[other_eye].y_axis
+            y_direction = edit_bones[eye_target].y_axis
+            z_direction = edit_bones[eye_target].z_axis + edit_bones[other_eye].z_axis
             create_common_ctrl = True
         elif self.is_clustered():
             [position, y_direction, z_direction] = self.get_cluster_data()

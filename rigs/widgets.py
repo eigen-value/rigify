@@ -254,7 +254,7 @@ def get_cluster_span(cluster):
 def get_2d_border(cluster, max_points=None, size=1.0, double=True):
 
     if not max_points:
-        max_points = len(cluster)
+        max_points = 2*len(cluster)
 
     angle_step = 2*pi/max_points
 
@@ -265,7 +265,7 @@ def get_2d_border(cluster, max_points=None, size=1.0, double=True):
     for i, point in enumerate(cluster):
         angle = point.to_2d().angle_signed(x_axis)
         angle = angle if angle >= 0 else 2*pi + angle
-        index = int(round(angle/angle_step, 2))
+        index = int(round(angle/angle_step, 2)) % len(points)
         if point.magnitude > points[index][1]:
             points[index] = (i, point.magnitude)
 
