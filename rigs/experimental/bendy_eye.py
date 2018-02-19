@@ -451,6 +451,10 @@ class Rig(MeshyRig):
         if 'eyefollow' in self.bones['eye_mch']:
             edit_bones[self.bones['eye_mch']['eyefollow']].parent = None
 
+        if 'eyeball_def' in self.bones['eye_def']:
+            eye_hook = self.bones['eye_def']['eyeball_def']
+            edit_bones[eye_hook].parent = edit_bones[self.bones['eye_mch']['eye_master']]
+
         if 'eye_hook' in self.bones['eye_ctrl']:
             eye_hook = self.bones['eye_ctrl']['eye_hook']
             edit_bones[eye_hook].parent = edit_bones[self.bones['eye_mch']['eye_master']]
