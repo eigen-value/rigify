@@ -205,19 +205,18 @@ class ChainyRig(BaseRig):
         bpy.ops.object.mode_set(mode='EDIT')
         edit_bones = self.obj.data.edit_bones
 
-        for chain_object in self.chain_objects:
-            self.chain_objects[chain_object].parent_bones()
+        for chain in self.chain_objects:
+            chain_object = self.chain_objects[chain]
+            chain_object.parent_bones()
 
-        # PARENT subchain sibling controls
-        for chain in self.chains:
-            for subchain in self.chains[chain]:
-                subchain_object = self.get_chain_object_by_name(subchain)
-                subchain_ctrls = subchain_object.get_chain_bones_by_type('ctrl')
+            if chain_object.parent is not None:         # subchains ctrls need reparenting
+                parent_chain_object = chain_object.parent
+                subchain_ctrls = chain_object.get_chain_bones_by_type('ctrl')
                 for i, ctrl in enumerate(subchain_ctrls):
-                    ctrl_bone = edit_bones[ctrl]
-                    parent = subchain_object.get_chain_bone_by_index(index=i, bone_type='ctrl')
-                    if parent:
-                        ctrl_bone.parent = edit_bones[parent].parent
+                    subchain_ctrl_bone = edit_bones[ctrl]
+                    parent_ctrl = parent_chain_object.get_chain_bone_by_index(index=i, bone_type='ctrl')
+                    if parent_ctrl:
+                        subchain_ctrl_bone.parent = edit_bones[parent_ctrl].parent
 
     def assign_layers(self):
         """

@@ -101,6 +101,7 @@ class Chain:
                 mch = make_mechanism_name(strip_org(chain_bone))
                 mch = copy_bone(self.obj, chain_bone, assign_name=mch)
                 edit_bones[mch].parent = None
+                edit_bones[mch].use_connect = False
                 edit_bones[mch].length *= self.MCH_SCALE
                 self._bones['mch'].append(mch)
 
@@ -128,6 +129,7 @@ class Chain:
                 def_bone = make_deformer_name(strip_org(chain_bone))
                 def_bone = copy_bone(self.obj, chain_bone, assign_name=def_bone)
                 edit_bones[def_bone].parent = None
+                edit_bones[def_bone].use_connect = False
                 self._bones['def'].append(def_bone)
 
         return self._bones['def']
@@ -154,19 +156,23 @@ class Chain:
                 ctrl = copy_bone(self.obj, self.orientation_bone, assign_name=ctrl)
                 put_bone(self.obj, ctrl, edit_bones[chain_bone].head)
                 edit_bones[ctrl].length = edit_bones[self.orientation_bone].length * self.CTRL_SCALE
+                edit_bones[ctrl].parent = None
+                edit_bones[ctrl].use_connect = False
                 self._bones['ctrl'].append(ctrl)
 
             last_name = chain[-1]
             last_ctrl = copy_bone(self.obj, self.orientation_bone, assign_name=strip_org(last_name))
             put_bone(self.obj, last_ctrl, edit_bones[last_name].tail)
             edit_bones[last_ctrl].length = edit_bones[self.orientation_bone].length * self.CTRL_SCALE
+            edit_bones[last_ctrl].parent = None
+            edit_bones[last_ctrl].use_connect = False
             self._bones['ctrl'].append(last_ctrl)
 
         return self._bones['ctrl']
 
     def parent_bones(self):
         """
-        parenting pass
+        Non-overwriting parenting pass
         :return:
         """
 
@@ -182,13 +188,14 @@ class Chain:
             for i, name in enumerate(mch_bones):
                 mch_bone = edit_bones[name]
                 parent = self.get_chain_bone_by_index(index=i, bone_type='ctrl')
-                if parent:
+                if parent and mch_bone.parent is None:
                     mch_bone.parent = edit_bones[parent]
 
             ctrl_bones = self.get_chain_bones_by_type('ctrl')
             for ctrl in ctrl_bones:
-                edit_bones[ctrl].parent = edit_bones[self._base_bone].parent
-                edit_bones[ctrl].use_connect = False
+                if edit_bones[ctrl].parent is None:
+                    edit_bones[ctrl].parent = edit_bones[self._base_bone].parent
+                    edit_bones[ctrl].use_connect = False
 
     def make_constraints(self):
         """
