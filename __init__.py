@@ -301,7 +301,6 @@ def register():
 
     bpy.types.PoseBone.rigify_type = bpy.props.StringProperty(name="Rigify Type", description="Rig type for this bone")
     bpy.types.PoseBone.rigify_parameters = bpy.props.PointerProperty(type=RigifyParameters)
-    bpy.types.PoseBone.rigify_glue = bpy.props.StringProperty(name="Rigify Glue", description="Defines influence between controls")
 
     bpy.types.Armature.rigify_colors = bpy.props.CollectionProperty(type=RigifyColorSet)
 
@@ -396,7 +395,6 @@ def register():
 def unregister():
     del bpy.types.PoseBone.rigify_type
     del bpy.types.PoseBone.rigify_parameters
-    del bpy.types.PoseBone.rigify_glue
 
     IDStore = bpy.types.WindowManager
     del IDStore.rigify_collection

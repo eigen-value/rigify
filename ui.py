@@ -729,28 +729,6 @@ class VIEW3D_PT_rigify_animation_tools(bpy.types.Panel):
             row.operator("rigify.get_frame_range", icon='TIME', text='')
 
 
-class BONE_PT_rigify_glue(bpy.types.Panel):
-    bl_label = "Rigify Glue"
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
-    bl_context = "bone"
-
-    @classmethod
-    def poll(cls, context):
-
-        return context.object.type == 'ARMATURE' and context.active_pose_bone\
-               and context.active_object.data.get("rig_id") is None
-
-    def draw(self, context):
-        C = context
-        bone = context.active_pose_bone
-
-        layout = self.layout
-
-        row = layout.row()
-        row.prop(bone, "rigify_glue", text="Glue string")
-
-
 def rigify_report_exception(operator, exception):
     import traceback
     import sys
@@ -1386,7 +1364,6 @@ def register():
     bpy.utils.register_class(BONE_PT_rigify_buttons)
     bpy.utils.register_class(VIEW3D_PT_rigify_animation_tools)
     bpy.utils.register_class(VIEW3D_PT_tools_rigify_dev)
-    bpy.utils.register_class(BONE_PT_rigify_glue)
     bpy.utils.register_class(LayerInit)
     bpy.utils.register_class(Generate)
     bpy.utils.register_class(UpgradeMetarigTypes)
@@ -1423,7 +1400,6 @@ def unregister():
     bpy.utils.unregister_class(BONE_PT_rigify_buttons)
     bpy.utils.unregister_class(VIEW3D_PT_rigify_animation_tools)
     bpy.utils.unregister_class(VIEW3D_PT_tools_rigify_dev)
-    bpy.utils.unregister_class(BONE_PT_rigify_glue)
     bpy.utils.unregister_class(LayerInit)
     bpy.utils.unregister_class(Generate)
     bpy.utils.unregister_class(UpgradeMetarigTypes)
