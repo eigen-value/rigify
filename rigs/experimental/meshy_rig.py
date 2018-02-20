@@ -20,6 +20,7 @@ class MeshyRig(ChainyRig):
         self.control_snapper.aggregate_ctrls(same_parent=True)
 
     def generate(self):
+        self.orient_org_bones()
         self.create_mch()
         self.create_def()
         self.create_controls()

@@ -31,6 +31,13 @@ class BaseRig(object):
         self.bones['mch'] = dict()
         self.bones['def'] = dict()
 
+    def orient_org_bones(self):
+        """
+        This function re-orients org bones so that created bones are properly aligned and cns can work
+        :return:
+        """
+        pass
+
     def create_mch(self):
         pass
 
