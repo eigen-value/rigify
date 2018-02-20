@@ -1,6 +1,7 @@
 import bpy
 
-from ...utils import make_constraints_from_string
+from ...utils import make_constraints_from_string, make_deformer_name
+from ...utils import strip_org, copy_bone
 
 from .base_rig import BaseRig
 
@@ -64,6 +65,22 @@ class Rig(BaseRig):
 
         return bones_in_range
 
+    def create_def(self):
+        """
+        If add_glue_def is True adds a DEF
+        :return:
+        """
+
+        if not self.params.add_glue_def:
+            return
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
+
+        def_bone = make_deformer_name(strip_org(self.base_bone))
+        def_bone = copy_bone(self.obj, self.base_bone, def_bone)
+        self.bones['glue_def'] = def_bone
+
     def make_glue_constraints(self):
 
         bpy.ops.object.mode_set(mode='OBJECT')
@@ -82,6 +99,29 @@ class Rig(BaseRig):
         owner_pb = pose_bones[tail_ctrls[0]]
         make_constraints_from_string(owner_pb, target=self.obj, subtarget=head_ctrls[0],
                                      fstring=self.params.glue_string)
+
+        if 'glue_def' in self.bones:
+            owner_pb = pose_bones[self.bones['glue_def']]
+            make_constraints_from_string(owner_pb, target=self.obj, subtarget=head_ctrls[0],
+                                         fstring="CL1.0WW0.0")
+            make_constraints_from_string(owner_pb, target=self.obj, subtarget=tail_ctrls[0],
+                                         fstring="DT1.0#ST1.0")
+
+    def glue(self):
+        """
+        Glue pass
+        :return:
+        """
+
+        self.create_def()
+        self.make_glue_constraints()
+
+    def generate(self):
+        """
+        Glue bones generate must do nothing. Glue bones pass is meant to happen after all other rigs generated
+        :return:
+        """
+        return [""]
 
 
 def create_sample(obj):

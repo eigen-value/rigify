@@ -351,6 +351,16 @@ def generate_rig(context, metarig):
             if scripts is not None:
                 ui_scripts += [scripts[0]]
         t.tick("Generate rigs: ")
+
+        # # Do final gluing
+        for rig in rigs:
+            if hasattr(rig, "glue"):
+                # update glue_bone rigs
+                bpy.ops.object.mode_set(mode='EDIT')
+                rig = rig.__class__(rig.obj, rig.base_bone, rig.params)
+
+                rig.glue()
+        t.tick("Glue pass")
     except Exception as e:
         # Cleanup if something goes wrong
         print("Rigify: failed to generate rig.")
@@ -523,14 +533,6 @@ def generate_rig(context, metarig):
         bpy.ops.logic.controller_add(type='PYTHON', object=obj.name)
         ctrl = obj.game.controllers[-1]
         ctrl.text = bpy.data.texts[script.name]
-
-    # # Do final gluing
-    for rig in rigs:
-        if hasattr(rig, "make_glue_constraints"):
-            # update glue_bone rigs
-            bpy.ops.object.mode_set(mode='EDIT')
-            rig = rig.__class__(rig.obj, rig.base_bone, rig.params)
-            rig.make_glue_constraints()
 
     t.tick("The rest: ")
     #----------------------------------
