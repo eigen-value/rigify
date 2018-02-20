@@ -6,14 +6,14 @@
 #######################################################################################################################
 
 import bpy
-from ...utils import copy_bone
-from ...utils import org, strip_org, strip_def, make_deformer_name, make_mechanism_name
+from rna_prop_ui import rna_idprop_ui_prop_get
+
+from ...utils import copy_bone, align_bone_z_axis
+from ...utils import strip_org, make_mechanism_name
 from ...utils import MetarigError
 from ...utils import make_constraints_from_string
-from rna_prop_ui import rna_idprop_ui_prop_get
 from ..widgets import create_jaw_widget
 from .meshy_rig import MeshyRig
-from .control_snapper import ControlSnapper
 from .control_layers_generator import ControlLayersGenerator
 
 script = """
@@ -31,8 +31,7 @@ class Rig(MeshyRig):
 
         super().__init__(obj, bone_name, params)
 
-        self.main_mch = None
-        self.get_jaw()
+        self.main_mch = self.get_jaw()
         self.lip_len = None
         self.mouth_bones = self.get_mouth()
 
@@ -47,10 +46,12 @@ class Rig(MeshyRig):
         bpy.ops.object.mode_set(mode='EDIT')
         edit_bones = self.obj.data.edit_bones
 
+        name = ""
         for child in edit_bones[self.bones['org'][0]].children:
             if child.use_connect:
-                main_mch = child
-                self.main_mch = main_mch.name
+                name = child.name
+
+        return name
 
     def get_mouth(self):
         """
@@ -97,6 +98,17 @@ class Rig(MeshyRig):
             raise MetarigError("Badly drawn mouth")
 
         return mouth_bones_dict
+
+    def orient_org_bones(self):
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
+
+        top_org = self.mouth_bones['top'][0]
+        bottom_org = self.mouth_bones['bottom'][0]
+        alignment_axis = edit_bones[bottom_org].head - edit_bones[top_org].head
+
+        align_bone_z_axis(self.obj, self.main_mch, alignment_axis)
 
     def create_mch(self):
         bpy.ops.object.mode_set(mode='EDIT')
@@ -170,8 +182,7 @@ class Rig(MeshyRig):
                 make_constraints_from_string(owner, self.obj, subtarget, "CT0.0WW0.0")
             # add limits on upper_lip jaw_master
             if j_m == self.bones['jaw_mch']['jaw_masters'][-2]:
-                make_constraints_from_string(owner, self.obj, "", "LLmY0MZ0#LRmX%fMX0" % (-3.14/2))
-
+                make_constraints_from_string(owner, self.obj, "", "LLmY0mZ0#LRmX0MX%f" % (3.14/2))
 
         lip_bones = []
         lip_bones.extend(self.mouth_bones['top'])
