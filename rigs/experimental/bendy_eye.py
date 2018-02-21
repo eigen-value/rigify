@@ -945,6 +945,7 @@ def add_parameters(params):
             return
 
         if obj.pose.bones[value].rigify_parameters.paired_eye != name:
+            obj.pose.bones[value].rigify_parameters.clustered_eye = False
             obj.pose.bones[value].rigify_parameters.paired_eye = name
 
     def get_paired(self):
@@ -952,6 +953,14 @@ def add_parameters(params):
             return self['paired_eye']
         else:
             return ''
+
+    class EyeName(bpy.types.PropertyGroup):
+        name = bpy.props.StringProperty()
+
+    bpy.utils.register_class(EyeName)
+
+    IDStore = bpy.types.WindowManager
+    IDStore.other_eyes = bpy.props.CollectionProperty(type=EyeName)
 
     params.set_paired = set_paired
     params.get_paired = get_paired
@@ -980,8 +989,20 @@ def parameters_ui(layout, params):
     r = layout.row()
     r.prop(params, "clustered_eye")
 
+    id_store = bpy.context.window_manager
+
+    for i in range(0, len(id_store.other_eyes)):
+        id_store.other_eyes.remove(0)
+
+    bones = bpy.context.active_object.pose.bones
+    for t in bones:
+        if t.rigify_type == 'experimental.bendy_eye':
+            id_store.other_eyes.add()
+            id_store.other_eyes[-1].name = t.name
+
     r = layout.row()
-    r.prop(params, "paired_eye")
+    r.prop_search(params, "paired_eye", id_store, "other_eyes", text="Paired eye", icon='BONE_DATA')
+
     if params.clustered_eye:
         r.enabled = False
 
