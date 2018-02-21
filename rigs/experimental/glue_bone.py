@@ -81,6 +81,10 @@ class Rig(BaseRig):
         def_bone = copy_bone(self.obj, self.base_bone, def_bone)
         self.bones['glue_def'] = def_bone
 
+        DEF_LAYER = [n == 29 for n in range(0, 32)]
+        edit_bones[def_bone].layers = DEF_LAYER
+        edit_bones[def_bone].use_deform = True
+
     def make_glue_constraints(self):
 
         bpy.ops.object.mode_set(mode='OBJECT')
