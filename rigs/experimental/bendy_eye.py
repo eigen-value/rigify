@@ -614,19 +614,62 @@ class Rig(MeshyRig):
                     cns.head_tail = 1.0
 
     def make_drivers(self):
-
-        if not self.needs_driver:
-            return ['']
-
         bpy.ops.object.mode_set(mode='OBJECT')
         pose_bones = self.obj.pose.bones
+
+        eye_target = self.bones['eye_ctrl']['eye_target']
+
+        if self.lid_len % 2 == 0:
+            i = int(self.lid_len/2)
+            central_ctrl_top = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i)
+            central_ctrl_bottom = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i)
+        else:
+            central_ctrl_top = self.bones['eye_ctrl']['top_lid_master']
+            central_ctrl_bottom = self.bones['eye_ctrl']['bottom_lid_master']
+
+        prop_lid_follow_name = 'lid_follow'
+
+        pose_bones[eye_target][prop_lid_follow_name] = 1.0
+
+        prop = rna_idprop_ui_prop_get(pose_bones[eye_target], prop_lid_follow_name)
+        prop["min"] = 0.0
+        prop["max"] = 1.0
+        prop["soft_min"] = 0.0
+        prop["soft_max"] = 1.0
+        prop["description"] = prop_lid_follow_name
+
+        drv = pose_bones[central_ctrl_top].constraints[0].driver_add("influence").driver
+        drv.type = 'SUM'
+
+        var = drv.variables.new()
+        var.name = prop_lid_follow_name
+        var.type = "SINGLE_PROP"
+        var.targets[0].id = self.obj
+        var.targets[0].data_path = pose_bones[eye_target].path_from_id() + '[' + '"' + prop_lid_follow_name + '"' + ']'
+
+        drv = pose_bones[central_ctrl_bottom].constraints[0].driver_add("influence").driver
+        drv.type = 'SUM'
+
+        var = drv.variables.new()
+        var.name = prop_lid_follow_name
+        var.type = "SINGLE_PROP"
+        var.targets[0].id = self.obj
+        var.targets[0].data_path = pose_bones[eye_target].path_from_id() + '[' + '"' + prop_lid_follow_name + '"' + ']'
+
+        all_ctrls = []
+        all_ctrls.append(self.bones['eye_ctrl']['eye_target'])
+        all_ctrls.append(self.bones['eye_ctrl']['master_eye'])
+        default_controls_string = ", ".join(["'" + x + "'" for x in all_ctrls])
+
+        if not self.needs_driver:
+            return [script % (default_controls_string, eye_target, prop_lid_follow_name)]
 
         # eyefollow driver
         if self.paired_eye or self.is_clustered():
             if 'common' in self.bones['eye_ctrl'] and 'eyefollow' in self.bones['eye_mch']:
                 bone = self.bones['eye_ctrl']['common']
             else:
-                return ['']
+                return [script % (default_controls_string, eye_target, prop_lid_follow_name)]
         else:
             bone = self.bones['eye_ctrl']['eye_target']
 
@@ -645,7 +688,7 @@ class Rig(MeshyRig):
         mch_eyes_parent = self.bones['eye_mch']['eyefollow']
 
         drv = pose_bones[mch_eyes_parent].constraints[0].driver_add("influence").driver
-        drv.type='SUM'
+        drv.type = 'SUM'
 
         var = drv.variables.new()
         var.name = prop_name
@@ -672,9 +715,11 @@ class Rig(MeshyRig):
             controls_string = ", ".join(["'" + x + "'" for x in all_ctrls])
 
             if main_ctrl:
-                return [script % (controls_string, main_ctrl, prop_name)]
+                script_out = script % (default_controls_string, eye_target, prop_lid_follow_name)
+                script_out = script_out + (script % (controls_string, main_ctrl, prop_name))
+                return [script_out]
 
-        return [""]
+        return [script % (default_controls_string, eye_target, prop_lid_follow_name)]
 
     def create_widgets(self):
 
