@@ -11,7 +11,7 @@ from rna_prop_ui import rna_idprop_ui_prop_get
 from ...utils import copy_bone, align_bone_z_axis
 from ...utils import strip_org, make_mechanism_name
 from ...utils import MetarigError
-from ...utils import make_constraints_from_string
+from ...utils import make_constraints_from_string, create_cube_widget
 from ..widgets import create_jaw_widget
 from .meshy_rig import MeshyRig
 from .control_layers_generator import ControlLayersGenerator
@@ -311,6 +311,20 @@ class Rig(MeshyRig):
 
         all_ctrls = self.control_snapper.flatten(self.bones['ctrl'])
         self.layer_generator.assign_layer(primary_ctrls, all_ctrls)
+
+    def create_widgets(self):
+
+        top_main = self.get_ctrl_by_index(strip_org(self.mouth_bones['top'][0]), 0)
+        corner_1 = self.get_ctrl_by_index(strip_org(self.mouth_bones['top'][0]), -1)
+        corner_2 = self.get_ctrl_by_index(strip_org(self.mouth_bones['top'][1]), -1)
+        bottom_main = self.get_ctrl_by_index(strip_org(self.mouth_bones['bottom'][0]), 0)
+
+        create_cube_widget(self.obj, top_main)
+        create_cube_widget(self.obj, corner_1)
+        create_cube_widget(self.obj, corner_2)
+        create_cube_widget(self.obj, bottom_main)
+
+        super().create_widgets()
 
     def generate(self):
         return super().generate()

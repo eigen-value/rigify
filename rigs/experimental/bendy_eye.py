@@ -336,7 +336,7 @@ class Rig(MeshyRig):
             mid_index = int((self.lid_len + 1)/2)
 
             top_lid_master = copy_bone(self.obj, self.bones['ctrl'][top_chain][0])
-            edit_bones[top_lid_master].length *= 1.5
+            # edit_bones[top_lid_master].length *= 1.5
             self.bones['eye_ctrl']['top_lid_master'] = top_lid_master
             mid_bone_1 = edit_bones[self.bones['ctrl'][top_chain][mid_index - 1]]
             mid_bone_2 = edit_bones[self.bones['ctrl'][top_chain][mid_index]]
@@ -344,7 +344,7 @@ class Rig(MeshyRig):
             align_bone_y_axis(self.obj, top_lid_master, axis)
 
             bottom_lid_master = copy_bone(self.obj, self.bones['ctrl'][bottom_chain][0])
-            edit_bones[bottom_lid_master].length *= 1.5
+            # edit_bones[bottom_lid_master].length *= 1.5
             self.bones['eye_ctrl']['bottom_lid_master'] = bottom_lid_master
             mid_bone_1 = edit_bones[self.bones['ctrl'][bottom_chain][mid_index - 1]]
             mid_bone_2 = edit_bones[self.bones['ctrl'][bottom_chain][mid_index]]
@@ -355,8 +355,8 @@ class Rig(MeshyRig):
             mid_index = int((self.lid_len) / 2)
             top_lid_master = self.bones['ctrl'][top_chain][mid_index]
             bottom_lid_master = self.bones['ctrl'][bottom_chain][mid_index]
-            edit_bones[top_lid_master].length *= 1.5
-            edit_bones[bottom_lid_master].length *= 1.5
+            # edit_bones[top_lid_master].length *= 1.5
+            # edit_bones[bottom_lid_master].length *= 1.5
             self.bones['eye_ctrl']['top_lid_master'] = top_lid_master
             self.bones['eye_ctrl']['bottom_lid_master'] = bottom_lid_master
 
@@ -512,11 +512,11 @@ class Rig(MeshyRig):
             central_ctrl_top = self.get_ctrl_by_index(strip_org(self.lid_bones['top'][0]), i)
             owner = pose_bones[central_ctrl_top]
             subtarget = tip
-            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
+            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LLO0.0")
             central_ctrl_bottom = self.get_ctrl_by_index(strip_org(self.lid_bones['bottom'][0]), i)
             owner = pose_bones[central_ctrl_bottom]
             subtarget = tip
-            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
+            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LLO0.0")
             influence = 0.6
             j = 1
             while True:
@@ -549,12 +549,12 @@ class Rig(MeshyRig):
             top_lid_master = self.bones['eye_ctrl']['top_lid_master']
             owner = pose_bones[top_lid_master]
             subtarget = tip
-            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
+            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LLO0.0")
 
             bottom_lid_master = self.bones['eye_ctrl']['bottom_lid_master']
             owner = pose_bones[bottom_lid_master]
             subtarget = tip
-            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LL0.0")
+            make_constraints_from_string(owner, self.obj, subtarget, "CL0.5LLO0.0")
 
             influence = 0.6
             i = int((self.lid_len + 1)/2)
@@ -741,12 +741,12 @@ class Rig(MeshyRig):
         # top lid master
         if 'top_lid_master' in self.bones['eye_ctrl']:
             top_lid_master = self.bones['eye_ctrl']['top_lid_master']
-            create_sphere_widget(self.obj, top_lid_master)
+            create_cube_widget(self.obj, top_lid_master)
 
         # bottom lid master
         if 'bottom_lid_master' in self.bones['eye_ctrl']:
             bottom_lid_master = self.bones['eye_ctrl']['bottom_lid_master']
-            create_sphere_widget(self.obj, bottom_lid_master)
+            create_cube_widget(self.obj, bottom_lid_master)
 
         if 'common' in self.bones['eye_ctrl']:
             common_ctrl = self.bones['eye_ctrl']['common']
