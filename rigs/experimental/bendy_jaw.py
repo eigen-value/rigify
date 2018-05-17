@@ -34,6 +34,7 @@ class Rig(MeshyRig):
         self.main_mch = self.get_jaw()
         self.lip_len = None
         self.mouth_bones = self.get_mouth()
+        self.rotation_mode = params.rotation_mode
 
         self.layer_generator = ControlLayersGenerator(self)
 
@@ -104,11 +105,9 @@ class Rig(MeshyRig):
         bpy.ops.object.mode_set(mode='EDIT')
         edit_bones = self.obj.data.edit_bones
 
-        top_org = self.mouth_bones['top'][0]
-        bottom_org = self.mouth_bones['bottom'][0]
-        alignment_axis = edit_bones[bottom_org].head - edit_bones[top_org].head
-
-        align_bone_z_axis(self.obj, self.main_mch, alignment_axis)
+        if self.rotation_mode == 'automatic':
+            alignment_axis = edit_bones[self.main_mch].tail - edit_bones[self.base_bone].head
+            align_bone_z_axis(self.obj, self.main_mch, alignment_axis)
 
     def create_mch(self):
         bpy.ops.object.mode_set(mode='EDIT')
@@ -151,9 +150,6 @@ class Rig(MeshyRig):
         jaw_ctrl = copy_bone(self.obj, self.main_mch, jaw_ctrl_name)
         self.bones['jaw_ctrl']['jaw'] = jaw_ctrl
         edit_bones[jaw_ctrl].use_connect = False
-
-        bpy.ops.object.mode_set(mode='OBJECT')
-        create_jaw_widget(self.obj, jaw_ctrl)
 
         super().create_controls()
 
@@ -323,6 +319,9 @@ class Rig(MeshyRig):
         create_cube_widget(self.obj, corner_1)
         create_cube_widget(self.obj, corner_2)
         create_cube_widget(self.obj, bottom_main)
+
+        jaw_ctrl = self.bones['jaw_ctrl']['jaw']
+        create_jaw_widget(self.obj, jaw_ctrl)
 
         super().create_widgets()
 
@@ -496,11 +495,25 @@ def add_parameters(params):
     """ Add the parameters of this rig type to the
         RigifyParameters PropertyGroup
     """
+    items = [
+        ('manual', 'Manual', ''),
+        ('automatic', 'Automatic', '')
+    ]
+
+    params.rotation_mode = bpy.props.EnumProperty(
+        items=items,
+        name="Rotation Mode",
+        description="Auto will align z-axis of jaw ctrl along the plane defined by the main and jaw bones",
+        default='automatic'
+    )
 
     ControlLayersGenerator.add_layer_parameters(params)
 
 
 def parameters_ui(layout, params):
     """ Create the ui for the rig parameters."""
+
+    r = layout.row()
+    r.prop(params, "rotation_mode")
 
     ControlLayersGenerator.add_layers_ui(layout, params)
