@@ -1,6 +1,6 @@
 import bpy
 
-from ...utils import make_constraints_from_string, make_deformer_name
+from ...utils import make_constraints_from_string, make_deformer_name, make_mechanism_name
 from ...utils import strip_org, copy_bone
 
 from .base_rig import BaseRig
@@ -13,6 +13,7 @@ class Rig(BaseRig):
     def __init__(self, obj, bone_name, params):
         super().__init__(obj, bone_name, params)
 
+        self.glue_mode = params.glue_mode
         self.bones['ctrl']['all_ctrls'] = self.get_all_armature_ctrls()
 
     def get_all_armature_ctrls(self):
@@ -65,6 +66,10 @@ class Rig(BaseRig):
 
         return bones_in_range
 
+    def get_def_by_org(self, org_name):
+        base_name = strip_org(org_name)
+        return make_deformer_name(base_name)
+
     def create_def(self):
         """
         If add_glue_def is True adds a DEF
@@ -85,8 +90,18 @@ class Rig(BaseRig):
         edit_bones[def_bone].layers = DEF_LAYER
         edit_bones[def_bone].use_deform = True
 
-    def make_glue_constraints(self):
+    def create_mch(self):
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
 
+        mch_bone = make_mechanism_name(strip_org(self.base_bone))
+        mch_bone = copy_bone(self.obj, self.base_bone, mch_bone)
+        self.bones['glue_mch'] = mch_bone
+
+        DEF_LAYER = [n == 30 for n in range(0, 32)]
+        edit_bones[mch_bone].layers = DEF_LAYER
+
+    def make_glue_constraints(self):
         bpy.ops.object.mode_set(mode='OBJECT')
         pose_bones = self.obj.pose.bones
 
@@ -111,18 +126,50 @@ class Rig(BaseRig):
             make_constraints_from_string(owner_pb, target=self.obj, subtarget=tail_ctrls[0],
                                          fstring="DT1.0#ST1.0")
 
+    def make_def_mediation(self):
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
+
+        def_parent = self.get_def_by_org(edit_bones[self.base_bone].parent.name)
+        def_child = ""
+        for bone in edit_bones[def_parent].children:
+            if bone.use_connect:
+                def_child = self.get_def_by_org(bone.name)
+
+        if def_child == "":
+            return
+
+        edit_bones[self.bones['glue_mch']].parent = edit_bones[def_parent]
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        pose_bones = self.obj.pose.bones
+
+        owner_pb = pose_bones[self.bones['glue_mch']]
+        subtarget = def_child
+        make_constraints_from_string(owner_pb, target=self.obj, subtarget=subtarget,
+                                     fstring="CR0.5LLO")
+
+        owner_pb = pose_bones[self.base_bone]
+        subtarget = self.bones['glue_mch']
+        make_constraints_from_string(owner_pb, target=self.obj, subtarget=subtarget,
+                                     fstring="CT1.0WW")
+
     def glue(self):
         """
         Glue pass
         :return:
         """
 
-        self.create_def()
-        self.make_glue_constraints()
+        if self.glue_mode == "glue":
+            self.create_def()
+            self.make_glue_constraints()
+        elif self.glue_mode == "def_mediator":
+            self.create_mch()
+            self.make_def_mediation()
 
     def generate(self):
         """
-        Glue bones generate must do nothing. Glue bones pass is meant to happen after all other rigs generated
+        Glue bones generate must do nothing. Glue bones pass is meant to happen after all other rigs are generated
         :return:
         """
         return [""]
@@ -177,6 +224,18 @@ def add_parameters(params):
         RigifyParameters PropertyGroup
     """
 
+    items = [
+        ('def_mediator', 'DEF-mediator', ''),
+        ('glue', 'Glue', '')
+    ]
+
+    params.glue_mode = bpy.props.EnumProperty(
+        items=items,
+        name="Glue Mode",
+        description="Glue adds constraints on generated ctrls DEF mediator is a DEF helper",
+        default='glue'
+    )
+
     params.glue_string = bpy.props.StringProperty(name="Rigify Glue String",
                                                   description="Defines a set of cns between controls")
 
@@ -187,9 +246,12 @@ def add_parameters(params):
 
 def parameters_ui(layout, params):
     """ Create the ui for the rig parameters."""
-
     row = layout.row()
-    row.prop(params, "glue_string", text="Glue string")
+    row.prop(params, "glue_mode")
 
-    row = layout.row()
-    row.prop(params, "add_glue_def", text="Add DEF bone")
+    if params.glue_mode == 'glue':
+        row = layout.row()
+        row.prop(params, "glue_string", text="Glue string")
+
+        row = layout.row()
+        row.prop(params, "add_glue_def", text="Add DEF bone")
