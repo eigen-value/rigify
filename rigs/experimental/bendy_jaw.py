@@ -299,11 +299,17 @@ class Rig(MeshyRig):
 
     def assign_layers(self):
 
+        top_main = self.get_ctrl_by_index(strip_org(self.mouth_bones['top'][0]), 0)
+        corner_1 = self.get_ctrl_by_index(strip_org(self.mouth_bones['top'][0]), -1)
+        corner_2 = self.get_ctrl_by_index(strip_org(self.mouth_bones['top'][1]), -1)
+        bottom_main = self.get_ctrl_by_index(strip_org(self.mouth_bones['bottom'][0]), 0)
+
         primary_ctrls = []
-        primary_ctrls.extend(self.bones['ctrl'][strip_org(self.mouth_bones['top'][0])])
-        primary_ctrls.extend(self.bones['ctrl'][strip_org(self.mouth_bones['top'][1])])
-        primary_ctrls.extend(self.bones['ctrl'][strip_org(self.mouth_bones['bottom'][0])])
-        primary_ctrls.extend(self.bones['ctrl'][strip_org(self.mouth_bones['bottom'][1])])
+        primary_ctrls.append(top_main)
+        primary_ctrls.append(corner_1)
+        primary_ctrls.append(corner_2)
+        primary_ctrls.append(bottom_main)
+        primary_ctrls.append(self.bones['jaw_ctrl']['jaw'])
 
         all_ctrls = self.control_snapper.flatten(self.bones['ctrl'])
         self.layer_generator.assign_layer(primary_ctrls, all_ctrls)
