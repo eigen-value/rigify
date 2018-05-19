@@ -112,6 +112,17 @@ class Rig(ChainyRig):
 
         edit_bones[self.bones['tail_mch']['rot_tail_mch']].parent = edit_bones[tweak_chain[-1]]
 
+    def assign_layers(self):
+
+        primary_ctrls = []
+        primary_ctrls.append(self.bones['tail_ctrl']['tail_master'])
+
+        all_ctrls = self.get_all_ctrls()
+        self.layer_generator.assign_layer(primary_ctrls, all_ctrls)
+
+        tweaks = self.flatten(self.bones['tweaks'])
+        self.layer_generator.assign_tweak_layers(tweaks)
+
     def make_constraints(self):
 
         bpy.ops.object.mode_set(mode='OBJECT')
@@ -289,9 +300,11 @@ def add_parameters(params):
     """
 
     ControlLayersGenerator.add_layer_parameters(params)
+    ControlLayersGenerator.add_tweak_layer_parameters(params)
 
 
 def parameters_ui(layout, params):
     """ Create the ui for the rig parameters."""
 
     ControlLayersGenerator.add_layers_ui(layout, params)
+    ControlLayersGenerator.add_tweak_layers_ui(layout, params)

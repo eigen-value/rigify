@@ -477,7 +477,7 @@ class Rig(MeshyRig):
         if 'common' in self.bones['eye_ctrl']:
             primary_ctrls.append(self.bones['eye_ctrl']['common'])
 
-        all_ctrls = self.control_snapper.flatten(self.bones['ctrl'])
+        all_ctrls = self.get_all_ctrls()
         self.layer_generator.assign_layer(primary_ctrls, all_ctrls)
 
     def make_constraints(self):
