@@ -4,15 +4,14 @@
 #######################################################################################################################
 
 import bpy
-import re
 from mathutils import Vector
 from rna_prop_ui import rna_idprop_ui_prop_get
-from ...utils import copy_bone, flip_bone, put_bone
-from ...utils import org, strip_org, strip_def, make_deformer_name, make_mechanism_name
-from ...utils import create_circle_widget, create_sphere_widget, create_widget, create_cube_widget
+from ...utils import copy_bone, put_bone
+from ...utils import org, strip_org, make_deformer_name, make_mechanism_name
+from ...utils import create_circle_widget, create_cube_widget
 from ...utils import MetarigError
 from ...utils import make_constraints_from_string, align_bone_y_axis, align_bone_z_axis
-from ..widgets import create_eye_widget, create_eyes_widget, create_widget_from_cluster
+from ..widgets import create_eye_widget, create_eyes_widget, create_widget_from_cluster, create_gear_widget
 from .meshy_rig import MeshyRig
 from .control_snapper import ControlSnapper
 from .control_layers_generator import ControlLayersGenerator
@@ -736,7 +735,7 @@ class Rig(MeshyRig):
 
         # master_eye
         eye_ctrl = self.bones['eye_ctrl']['master_eye']
-        create_circle_widget(self.obj, eye_ctrl)
+        create_circle_widget(self.obj, eye_ctrl, head_tail=1.0)
 
         # eye target
         eye_target = self.bones['eye_ctrl']['eye_target']
@@ -745,7 +744,7 @@ class Rig(MeshyRig):
         # eye hook
         if 'eye_hook' in self.bones['eye_ctrl']:
             eye_target = self.bones['eye_ctrl']['eye_hook']
-            create_circle_widget(self.obj, eye_target, head_tail=0.5)
+            create_gear_widget(self.obj, eye_target, size=10.0)
 
         # top lid master
         if 'top_lid_master' in self.bones['eye_ctrl']:
