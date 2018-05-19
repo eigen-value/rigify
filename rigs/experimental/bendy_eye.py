@@ -467,6 +467,15 @@ class Rig(MeshyRig):
         primary_ctrls = []
         primary_ctrls.append(self.bones['eye_ctrl']['top_lid_master'])
         primary_ctrls.append(self.bones['eye_ctrl']['bottom_lid_master'])
+        primary_ctrls.append(self.bones['eye_ctrl']['master_eye'])
+
+        if 'eye_hook' in self.bones['eye_ctrl']:
+            primary_ctrls.append(self.bones['eye_ctrl']['eye_hook'])
+
+        primary_ctrls.append(self.bones['eye_ctrl']['eye_target'])
+
+        if 'common' in self.bones['eye_ctrl']:
+            primary_ctrls.append(self.bones['eye_ctrl']['common'])
 
         all_ctrls = self.control_snapper.flatten(self.bones['ctrl'])
         self.layer_generator.assign_layer(primary_ctrls, all_ctrls)
