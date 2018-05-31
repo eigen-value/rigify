@@ -2,7 +2,7 @@ import bpy
 from ...utils import copy_bone, flip_bone
 from ...utils import strip_org, make_deformer_name, connected_children_names, make_mechanism_name
 from ...utils import create_circle_widget, create_widget
-from ...utils import MetarigError
+from ...utils import MetarigError, align_bone_x_axis
 from rna_prop_ui import rna_idprop_ui_prop_get
 
 script = """
@@ -23,11 +23,34 @@ class Rig:
         if len(self.org_bones) <= 1:
             raise MetarigError("RIGIFY ERROR: Bone '%s': listen bro, that finger rig jusaint put tugetha rite. A little hint, use more than one bone!!" % (strip_org(bone_name)))
 
+    def orient_org_bones(self):
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        eb = self.obj.data.edit_bones
+
+        if self.params.primary_rotation_axis == 'automatic':
+
+            first_bone = eb[self.org_bones[0]]
+            last_bone = eb[self.org_bones[-1]]
+
+            # Orient uarm farm bones
+            chain_y_axis = last_bone.tail - first_bone.head
+            chain_rot_axis = first_bone.y_axis.cross(chain_y_axis)  # ik-plane normal axis (rotation)
+            if chain_rot_axis.length < first_bone.length/100:
+                chain_rot_axis = first_bone.x_axis.normalized()
+            else:
+                chain_rot_axis = chain_rot_axis.normalized()
+
+            for bone in self.org_bones:
+                align_bone_x_axis(self.obj, bone, chain_rot_axis)
+
     def generate(self):
         org_bones = self.org_bones
 
         bpy.ops.object.mode_set(mode='EDIT')
         eb = self.obj.data.edit_bones
+
+        self.orient_org_bones()
 
         # Bone name lists
         ctrl_chain = []
@@ -36,7 +59,7 @@ class Rig:
         mch_drv_chain = []
 
         # Create ctrl master bone
-        org_name  = self.org_bones[0]
+        org_name = self.org_bones[0]
         temp_name = strip_org(self.org_bones[0])
 
         if temp_name[-2:] == '.L' or temp_name[-2:] == '.R':
@@ -222,6 +245,8 @@ class Rig:
             else:
                 # Match axis to expression
                 options = {
+                    "automatic": {"axis": 0,
+                                  "expr": '(1-sy)*pi'},
                     "X": {"axis": 0,
                           "expr": '(1-sy)*pi'},
                     "-X": {"axis": 0,
@@ -302,8 +327,9 @@ def add_parameters(params):
     """ Add the parameters of this rig type to the
         RigifyParameters PropertyGroup
     """
-    items = [('X', 'X', ''), ('Y', 'Y', ''), ('Z', 'Z', ''), ('-X', '-X', ''), ('-Y', '-Y', ''), ('-Z', '-Z', '')]
-    params.primary_rotation_axis = bpy.props.EnumProperty(items=items, name="Primary Rotation Axis", default='X')
+    items = [('automatic', 'Automatic', ''), ('X', 'X manual', ''), ('Y', 'Y manual', ''), ('Z', 'Z manual', ''),
+             ('-X', '-X manual', ''), ('-Y', '-Y manual', ''), ('-Z', '-Z manual', '')]
+    params.primary_rotation_axis = bpy.props.EnumProperty(items=items, name="Primary Rotation Axis", default='automatic')
 
 
 def parameters_ui(layout, params):
