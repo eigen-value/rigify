@@ -28,15 +28,28 @@ class Rig(ChainyRig):
 
         org_chain = self.get_chain_bones(self.base_bone)
 
-        if edit_bones[org_chain[-1]].children:
-            bone_to_copy = edit_bones[org_chain[-1]].children[0].name
+        if edit_bones[org_chain[0]].parent:
+            bone_to_copy = edit_bones[org_chain[0]].parent.name
         else:
             bone_to_copy = self.orientation_bone
+
         mch_rot_tail = make_mechanism_name('ROT-' + strip_org(self.base_bone))
         mch_rot_tail = copy_bone(self.obj, bone_to_copy, assign_name=mch_rot_tail)
         self.bones['tail_mch']['rot_tail_mch'] = mch_rot_tail
         main_chain = self.get_chain_bones(self.base_bone)
-        put_bone(self.obj, mch_rot_tail, edit_bones[main_chain[-1]].tail)
+        flip_bone(self.obj, mch_rot_tail)
+        edit_bones[mch_rot_tail].parent = None
+        put_bone(self.obj, mch_rot_tail, edit_bones[main_chain[0]].head)
+
+    def create_def(self):
+        super().create_def()
+
+        chain = strip_org(self.base_bone)
+
+        for def_bone in self.bones['def'][chain]:
+            flip_bone(self.obj, def_bone)
+
+        self.bones['def'][chain].reverse()
 
     def create_controls(self):
 
@@ -44,8 +57,6 @@ class Rig(ChainyRig):
         edit_bones = self.obj.data.edit_bones
 
         super().create_controls()
-
-        edit_bones = self.obj.data.edit_bones
 
         self.bones['tweaks'] = {}
         self.bones['tail_ctrl'] = {}
@@ -58,30 +69,24 @@ class Rig(ChainyRig):
         for org_bone, ctrl in zip(orgs, ctrl_chain):
             edit_bones[ctrl].length = edit_bones[org_bone].length
             align_bone_y_axis(self.obj, ctrl, edit_bones[org_bone].y_axis)
-            flip_bone(self.obj, ctrl)
             tweak_name = 'tweak_' + ctrl
             tweak_name = copy_bone(self.obj, org_bone, assign_name=tweak_name)
-            flip_bone(self.obj, tweak_name)
-            put_bone(self.obj, tweak_name, edit_bones[org_bone].head)
             edit_bones[tweak_name].length = edit_bones[self.orientation_bone].length * self.TWEAK_SCALE
             self.bones['tweaks'][chain].append(tweak_name)
 
         tweak_name = 'tweak_' + ctrl_chain[-1]
         tweak_name = copy_bone(self.obj, orgs[-1], assign_name=tweak_name)
         edit_bones[tweak_name].parent = None
-        flip_bone(self.obj, tweak_name)
         put_bone(self.obj, tweak_name, edit_bones[orgs[-1]].tail)
         edit_bones[tweak_name].length = edit_bones[self.orientation_bone].length * self.TWEAK_SCALE
         self.bones['tweaks'][chain].append(tweak_name)
 
-        ctrl_chain = self.bones['ctrl'][strip_org(self.base_bone)]
-        flip_bone(self.obj, ctrl_chain[-1])
-        edit_bones[ctrl_chain[-1]].head = edit_bones[orgs[-1]].tail
-        edit_bones[ctrl_chain[-1]].tail = edit_bones[orgs[-1]].head
+        edit_bones[ctrl_chain[-1]].head = edit_bones[orgs[0]].head
+        edit_bones[ctrl_chain[-1]].tail = edit_bones[orgs[0]].tail
         tail_master = strip_org(self.base_bone) + '_master'
         edit_bones[ctrl_chain[-1]].name = tail_master
         self.bones['tail_ctrl']['tail_master'] = tail_master
-        self.bones['ctrl'][strip_org(self.base_bone)][-1] = tail_master
+        ctrl_chain[-1] = tail_master
 
     def parent_bones(self):
 
@@ -93,24 +98,26 @@ class Rig(ChainyRig):
         ctrl_chain = self.bones['ctrl'][strip_org(self.base_bone)]
         tweak_chain = self.bones['tweaks'][strip_org(self.base_bone)]
         def_chain = self.bones['def'][strip_org(self.base_bone)]
-        org_bones = self.bones['org']
 
-        edit_bones[tweak_chain[0]].parent = edit_bones[ctrl_chain[0]]
+        edit_bones[tweak_chain[0]].parent = None
 
-        for ctrl, tweak in zip(ctrl_chain, tweak_chain[1:-1]):
+        for ctrl, tweak in zip(ctrl_chain[1:-1], tweak_chain[1:-1]):
             edit_bones[tweak].use_connect = False
             edit_bones[tweak].parent = edit_bones[ctrl]
+
+        edit_bones[tweak_chain[-1]].use_connect = False
+        edit_bones[tweak_chain[-1]].parent = edit_bones[ctrl_chain[-2]]
 
         for i, def_bone in enumerate(def_chain[1:]):
             edit_bones[def_bone].use_connect = True
             edit_bones[def_bone].parent = edit_bones[def_chain[i]]
 
-        for i, ctrl in enumerate(ctrl_chain[0:-2]):
-            edit_bones[ctrl].parent = edit_bones[ctrl_chain[i+1]]
+        for i, ctrl in enumerate(ctrl_chain[1:-1]):
+            edit_bones[ctrl].parent = edit_bones[ctrl_chain[i]]
 
-        edit_bones[ctrl_chain[-2]].parent = edit_bones[self.bones['tail_mch']['rot_tail_mch']]
+        edit_bones[ctrl_chain[0]].parent = edit_bones[self.bones['tail_mch']['rot_tail_mch']]
 
-        edit_bones[self.bones['tail_mch']['rot_tail_mch']].parent = edit_bones[tweak_chain[-1]]
+        edit_bones[self.bones['tail_mch']['rot_tail_mch']].parent = edit_bones[tweak_chain[0]]
 
     def assign_layers(self):
 
@@ -135,21 +142,24 @@ class Rig(ChainyRig):
         ctrl_chain = self.bones['ctrl'][strip_org(self.base_bone)]
 
         for i, def_bone in enumerate(def_chain):
-            pose_bones[def_bone].constraints[0].subtarget = tweak_chain[i]
-            pose_bones[def_bone].constraints[1].subtarget = tweak_chain[i+1]
-            pose_bones[def_bone].constraints[2].subtarget = tweak_chain[i+1]
+            pose_bones[def_bone].constraints[0].subtarget = tweak_chain[-i-1]
+            pose_bones[def_bone].constraints[1].subtarget = tweak_chain[-i-2]
+            pose_bones[def_bone].constraints[2].subtarget = tweak_chain[-i-2]
 
         for i, ctrl in enumerate(ctrl_chain):
             if ctrl != ctrl_chain[-1]:
                 owner = pose_bones[ctrl]
-                subtarget = ctrl_chain[i+1]
+                if i == 0:
+                    subtarget = ctrl_chain[-1]
+                else:
+                    subtarget = ctrl_chain[i-1]
                 make_constraints_from_string(owner, self.obj, subtarget, "CR1.0LLO")
                 owner.constraints[-1].use_y = False
 
-        last_connected_org = self.get_chain_bones(self.base_bone)[-1]
-        if pose_bones[last_connected_org].children:
+        first_org = self.get_chain_bones(self.base_bone)[0]
+        if pose_bones[first_org].parent:
             owner = pose_bones[self.bones['tail_mch']['rot_tail_mch']]
-            subtarget = pose_bones[last_connected_org].children[0].name
+            subtarget = pose_bones[first_org].parent.name
             make_constraints_from_string(owner, self.obj, subtarget, "CR1.0WW")
 
     def create_widgets(self):
@@ -168,7 +178,7 @@ class Rig(ChainyRig):
             create_sphere_widget(self.obj, bone)
 
         pose_bones[ctrl_chain[-1]].custom_shape_transform = \
-            pose_bones[self.bones['tweaks'][strip_org(self.base_bone)][0]]
+            pose_bones[self.bones['tweaks'][strip_org(self.base_bone)][-1]]
 
         super().create_widgets()
 
