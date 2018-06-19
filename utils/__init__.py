@@ -30,4 +30,4 @@ from .rig import RIG_DIR, METARIG_DIR, MODULE_NAME, outdated_types, upgradeMetar
 from .rig import get_rig_type, get_metarig_module, write_metarig
 from .rig import connected_children_names, has_connected_children
 
-from .layers import get_layers
+from .layers import get_layers, ControlLayersOption
