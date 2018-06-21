@@ -3,6 +3,7 @@ from mathutils import Vector
 from ...utils import copy_bone, flip_bone, put_bone, org, align_bone_y_axis, align_bone_x_axis
 from ...utils import strip_org, make_deformer_name, connected_children_names
 from ...utils import create_circle_widget, create_sphere_widget, create_neck_bend_widget, create_neck_tweak_widget
+from ...utils import create_circle_polygon, create_widget
 from ..widgets import create_ballsocket_widget
 from ...utils import MetarigError, make_mechanism_name, create_cube_widget
 from rna_prop_ui import rna_idprop_ui_prop_get
@@ -269,6 +270,9 @@ class Rig:
 
                 twk += [twk_name]
 
+        fk_ctrl = copy_bone(self.obj, mch_str, "neck_FK")
+        eb[fk_ctrl].length *= 0.9
+
         return {
             'ctrl_neck': neck,
             'ctrl': head,
@@ -278,7 +282,8 @@ class Rig:
             'mch': mch,
             'tweak': twk,
             'neck_bend': neck_bend,
-            'original_names': neck_bones
+            'original_names': neck_bones,
+            'fk_ctrl': fk_ctrl
         }
 
     def create_chest(self, chest_bones):
@@ -303,21 +308,25 @@ class Rig:
         twk, mch = [], []
 
         for b in chest_bones:
-            mch_name = copy_bone( self.obj, org(b), make_mechanism_name(b) )
-            self.orient_bone( eb[mch_name], 'y', self.spine_length / 10 )
+            mch_name = copy_bone(self.obj, org(b), make_mechanism_name(b))
+            self.orient_bone(eb[mch_name], 'y', self.spine_length / 10)
 
             twk_name = "tweak_" + b
-            twk_name = copy_bone( self.obj, org(b), twk_name )
+            twk_name = copy_bone(self.obj, org(b), twk_name)
             eb[twk_name].length /= 2
 
-            mch += [ mch_name ]
-            twk += [ twk_name ]
+            mch += [mch_name]
+            twk += [twk_name]
+
+        fk_ctrl = copy_bone(self.obj, make_mechanism_name(chest_bones[-1]), chest_bones[-1]+"_FK")
+        eb[fk_ctrl].length *= 0.9
 
         return {
-            'ctrl'    : chest,
-            'mch'     : mch,
-            'tweak'   : twk,
-            'mch_wgt' : mch_wgt
+            'ctrl': chest,
+            'mch': mch,
+            'tweak': twk,
+            'mch_wgt': mch_wgt,
+            'fk_ctrl': fk_ctrl
         }
 
     def create_hips(self, hip_bones):
@@ -332,7 +341,7 @@ class Rig:
             eb[hips],
             'y',
             self.spine_length / 4,
-            reverse = True
+            reverse=True
         )
 
         # create hips mch_wgt
@@ -344,24 +353,28 @@ class Rig:
         # Create mch and tweak bones
         twk, mch = [], []
         for b in hip_bones:
-            mch_name = copy_bone( self.obj, org(b), make_mechanism_name(b) )
+            mch_name = copy_bone(self.obj, org(b), make_mechanism_name(b))
             self.orient_bone(
-                eb[mch_name], 'y', self.spine_length / 10, reverse = True
+                eb[mch_name], 'y', self.spine_length / 10, reverse=True
             )
 
             twk_name = "tweak_" + b
-            twk_name = copy_bone( self.obj, org(b), twk_name )
+            twk_name = copy_bone(self.obj, org(b), twk_name)
 
             eb[twk_name].length /= 2
 
-            mch += [ mch_name ]
-            twk += [ twk_name ]
+            mch += [mch_name]
+            twk += [twk_name]
+
+        fk_ctrl = copy_bone(self.obj, make_mechanism_name(hip_bones[0]), hip_bones[0]+"_FK")
+        eb[fk_ctrl].length *= 0.9
 
         return {
-            'ctrl'    : hips,
-            'mch'     : mch,
-            'tweak'   : twk,
-            'mch_wgt' : mch_wgt
+            'ctrl': hips,
+            'mch': mch,
+            'tweak': twk,
+            'mch_wgt': mch_wgt,
+            'fk_ctrl': fk_ctrl
         }
 
     def create_tail(self, tail_bones):
@@ -456,7 +469,7 @@ class Rig:
 
         if bones['neck']['ctrl_neck']:
             # MCH stretch => neck ctrl
-            eb[ bones['neck']['mch_str']].parent = eb[ bones['neck']['ctrl_neck']]
+            eb[ bones['neck']['mch_str']].parent = eb[ bones['neck']['fk_ctrl']]
 
             # Neck control => MCH-rotation_neck
             eb[bones['neck']['ctrl_neck']].parent = eb[bones['neck']['mch_neck']]
@@ -471,9 +484,9 @@ class Rig:
         eb[bones['hips']['ctrl']].parent = eb[bones['pivot']['ctrl']]
 
         # Parent mch bones
-        if bones['neck']['ctrl_neck']:
+        if bones['neck']['fk_ctrl']:
             # Neck mch
-            eb[bones['neck']['mch_head']].parent = eb[bones['neck']['ctrl_neck']]
+            eb[bones['neck']['mch_head']].parent = eb[bones['neck']['fk_ctrl']]
         elif self.use_head:
             eb[bones['neck']['mch_head']].parent = eb[bones['chest']['mch'][-1]]
 
@@ -484,12 +497,14 @@ class Rig:
             #         b.parent = eb[org(org_b)]
 
         # Chest mch bones and neck mch
-        chest_mch = bones['chest']['mch'] + [bones['neck']['mch_neck']]
+        chest_mch = bones['chest']['mch']
         for i, b in enumerate(chest_mch):
             if i == 0:
                 eb[b].parent = eb[bones['pivot']['ctrl']]
             elif b:
                 eb[b].parent = eb[chest_mch[i-1]]
+
+        eb[bones['neck']['mch_neck']].parent = eb[bones['chest']['fk_ctrl']]
 
         # Hips mch bones
         for i, b in enumerate(bones['hips']['mch']):
@@ -502,29 +517,35 @@ class Rig:
         eb[bones['pivot']['mch']].parent = eb[bones['chest']['mch'][0]]
 
         # MCH widgets
-        eb[bones['chest']['mch_wgt']].parent = eb[bones['chest']['mch'][-1]]
-        eb[bones['hips']['mch_wgt']].parent = eb[bones['hips']['mch'][0]]
+        eb[bones['chest']['mch_wgt']].parent = eb[bones['chest']['fk_ctrl']]
+        eb[bones['chest']['fk_ctrl']].parent = eb[bones['chest']['mch'][-1]]
+        eb[bones['hips']['mch_wgt']].parent = eb[bones['hips']['fk_ctrl']]
+        eb[bones['hips']['fk_ctrl']].parent = eb[bones['hips']['mch'][0]]
+        if bones['neck']['fk_ctrl']:
+            eb[bones['neck']['fk_ctrl']].parent = eb[bones['neck']['ctrl_neck']]
 
         # Neck Tweaks
         if bones['neck']['tweak']:
             # Neck tweaks
-            for i, twk in enumerate( bones['neck']['tweak']):
+            for i, twk in enumerate(bones['neck']['tweak']):
                 if i == 0:
-                    eb[twk].parent = eb[ bones['neck']['ctrl_neck']]
+                    eb[twk].parent = eb[bones['neck']['fk_ctrl']]
                 else:
-                    eb[twk].parent = eb[ bones['neck']['mch'][i-1]]
+                    eb[twk].parent = eb[bones['neck']['mch'][i-1]]
 
         # Chest tweaks
-        for twk, mch in zip( bones['chest']['tweak'], bones['chest']['mch']):
+        for twk, mch in zip(bones['chest']['tweak'], bones['chest']['mch']):
             if bones['chest']['tweak'].index(twk) == 0:
                 eb[twk].parent = eb[bones['pivot']['mch']]
+            elif twk == bones['chest']['tweak'][-1]:
+                eb[twk].parent = eb[bones['chest']['fk_ctrl']]
             else:
                 eb[twk].parent = eb[mch]
 
         # Hips tweaks
         for i, twk in enumerate(bones['hips']['tweak']):
             if i == 0:
-                eb[twk].parent = eb[bones['hips']['mch'][i]]
+                eb[twk].parent = eb[bones['hips']['fk_ctrl']]
             else:
                 eb[twk].parent = eb[bones['hips']['mch'][i-1]]
 
@@ -749,6 +770,17 @@ class Rig:
             for b in original_neck_bones[:-1]:
                 pb[b].ik_stretch = 0.1
 
+        #Constrain spine_FK ctrl
+        spine_fk = bones['hips']['fk_ctrl']
+        hips = bones['hips']['ctrl']
+        self.make_constraint(spine_fk, {
+            'constraint': 'COPY_TRANSFORMS',
+            'subtarget': hips,
+            'influence': 0.5,
+            'target_space': 'LOCAL',
+            'owner_space': 'LOCAL',
+        })
+
     def create_drivers(self, bones):
         bpy.ops.object.mode_set(mode='OBJECT')
         pb = self.obj.pose.bones
@@ -876,6 +908,19 @@ class Rig:
                 bone_transform_name=None
             )
 
+        # FK ctrl widgets
+        fk_ctrls = [bones['hips']['fk_ctrl'], bones['chest']['fk_ctrl'], bones['neck']['fk_ctrl']]
+
+        for bone in fk_ctrls:
+            if bone == fk_ctrls[-1]:
+                [verts, edges] = create_circle_polygon(6, 'Y', radius=1.0, head_tail=0.5)
+            else:
+                [verts, edges] = create_circle_polygon(6, 'Z', radius=1.0)
+            wdgt_obj = create_widget(self.obj, bone, bone_transform_name=None)
+            if wdgt_obj is not None:
+                wdgt_obj.data.from_pydata(verts, edges, [])
+                wdgt_obj.data.update()
+
         if bones['neck']['ctrl_neck']:
             # Neck ctrl widget
             if len(bones['neck']['mch']) == 0:
@@ -914,10 +959,10 @@ class Rig:
             create_circle_widget(
                 self.obj,
                 bones['neck']['ctrl'],
-                radius              = 0.5,
-                head_tail           = head_tail,
-                with_line           = False,
-                bone_transform_name = None
+                radius=0.5,
+                head_tail=head_tail,
+                with_line=False,
+                bone_transform_name=None
             )
 
         # place widgets on correct bones
