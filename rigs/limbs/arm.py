@@ -9,6 +9,7 @@ from ...utils       import create_circle_widget, create_sphere_widget, create_li
 from ...utils       import MetarigError, make_mechanism_name, org
 from ...utils       import create_limb_widget, connected_children_names
 from ...utils       import align_bone_y_axis, align_bone_x_axis, align_bone_z_axis
+from ...rig_ui_template import UTILITIES_RIG_ARM, REGISTER_RIG_ARM
 from rna_prop_ui import rna_idprop_ui_prop_get
 from ..widgets import create_ikarrow_widget
 from math import trunc, pi
@@ -1067,7 +1068,11 @@ class Rig:
         script += extra_script % (controls_string, bones['main_parent'], 'IK_follow',
                                   'pole_follow', 'pole_follow', 'root/parent', 'root/parent')
 
-        return [script]
+        return {
+            'script': [script],
+            'utilities': UTILITIES_RIG_ARM,
+            'register': REGISTER_RIG_ARM,
+        }
 
 
 def add_parameters(params):

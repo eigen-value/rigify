@@ -24,6 +24,7 @@ import time
 import traceback
 import sys
 from rna_prop_ui import rna_idprop_ui_prop_get
+from collections import OrderedDict
 
 from .utils import MetarigError, new_bone, get_rig_type
 from .utils import ORG_PREFIX, MCH_PREFIX, DEF_PREFIX, WGT_PREFIX, ROOT_NAME, make_original_name
@@ -32,7 +33,7 @@ from .utils import create_root_widget
 from .utils import random_id
 from .utils import copy_attributes
 from .utils import gamma_correct
-from .rig_ui_template import UI_SLIDERS, layers_ui, UI_REGISTER
+from .rig_ui_template import UI_IMPORTS, UI_BASE_UTILITIES, UI_UTILITIES, UI_SLIDERS, layers_ui, UI_REGISTER
 
 
 RIG_MODULE = "rigs"
@@ -341,6 +342,9 @@ def generate_rig(context, metarig):
 
         # Generate all the rigs.
         ui_scripts = []
+        ui_imports = UI_IMPORTS.copy()
+        ui_utilities = UI_UTILITIES.copy()
+        ui_register = UI_REGISTER.copy()
         for rig in rigs:
             # Go into editmode in the rig armature
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -348,7 +352,16 @@ def generate_rig(context, metarig):
             obj.select = True
             bpy.ops.object.mode_set(mode='EDIT')
             scripts = rig.generate()
-            if scripts is not None:
+            if isinstance(scripts, dict):
+                if 'script' in scripts:
+                    ui_scripts += scripts['script']
+                if 'imports' in scripts:
+                    ui_imports += scripts['imports']
+                if 'utilities' in scripts:
+                    ui_utilities += scripts['utilities']
+                if 'register' in scripts:
+                    ui_register += scripts['register']
+            elif scripts is not None:
                 ui_scripts += [scripts[0]]
         t.tick("Generate rigs: ")
 
@@ -496,11 +509,23 @@ def generate_rig(context, metarig):
 
     id_store.rigify_rig_ui = script.name
 
-    script.write(UI_SLIDERS % rig_id)
+    for s in OrderedDict.fromkeys(ui_imports):
+        script.write(s + "\n")
+    script.write(UI_BASE_UTILITIES % rig_id)
+    for s in OrderedDict.fromkeys(ui_utilities):
+        script.write(s + "\n")
+    script.write(UI_SLIDERS)
     for s in ui_scripts:
         script.write("\n        " + s.replace("\n", "\n        ") + "\n")
     script.write(layers_ui(vis_layers, layer_layout))
-    script.write(UI_REGISTER)
+    script.write("\ndef register():\n")
+    ui_register = OrderedDict.fromkeys(ui_register)
+    for s in ui_register:
+        script.write("    bpy.utils.register_class("+s+");\n")
+    script.write("\ndef unregister():\n")
+    for s in ui_register:
+        script.write("    bpy.utils.unregister_class("+s+");\n")
+    script.write("\nregister()\n")
     script.use_module = True
 
     # Run UI script

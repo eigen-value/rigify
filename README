@@ -240,15 +240,39 @@ Implementation classes are shown in the metarig samples list and generate a samp
 
 GENERATING A PYTHON UI
 ----------------------
-The generate() method can also, optionally, return python code as a single
-string.  This python code is added to the "rig properties" panel that gets
-auto-generated along with the rig.  This is useful for exposing things like
-IK/FK switches in a nice way to the animator.
+The generate() method can also, optionally, return a dictionary with data
+used for generating the python UI. The dictionary may have the following
+keys (all optional):
 
-The string must be returned in a list, e.g.:
+  'script': python code as list of strings.
 
-return ["my python code"]
+    This python code is added to the "rig properties" panel that gets
+    auto-generated along with the rig.  This is useful for exposing things like
+    IK/FK switches in a nice way to the animator.
 
-The reason it needs to be put in a list is to leave room for expanding the API
-in the future, for returning additional information.
+  'utilities': python code as list of strings.
 
+    This code is added to the utility function/class area of the auto-generated
+    python script, and should contain functions, classes and operators for use
+    in the 'script' code and other utilities.
+
+  'imports': python code as list of strings.
+
+    These lines are added to the import section of the python script.
+
+  'register': list of class names.
+
+    These are used in generating the register() and unregister() functions.
+
+The 'utilities', 'imports' and 'register' lists returned by all rigs are concatenated
+and filtered for duplicates before use, in order to allow easy sharing of utility
+functions and classes: all that is needed is to ensure that shared code is included
+in the lists as exactly the same string by all users.
+
+The python code strings from the lists are implicitly terminated with a newline.
+
+Some rigs return a list with a single string, e.g.:
+
+    return ["my python code"]
+
+This is a deprecated format equivalent to {'script': ["my python code"]}.
