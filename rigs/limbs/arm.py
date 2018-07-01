@@ -1072,6 +1072,7 @@ class Rig:
             'script': [script],
             'utilities': UTILITIES_RIG_ARM,
             'register': REGISTER_RIG_ARM,
+            'noparent_bones': [bones['ik']['mch_hand'][i] for i in [0,1]],
         }
 
 

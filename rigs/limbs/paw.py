@@ -1223,6 +1223,7 @@ class Rig:
             'script': [script],
             'utilities': UTILITIES_RIG_LEG,
             'register': REGISTER_RIG_LEG,
+            'noparent_bones': [bones['ik']['mch_foot'][i] for i in [0,1]],
         }
 
 

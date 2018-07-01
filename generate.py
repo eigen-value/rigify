@@ -345,6 +345,7 @@ def generate_rig(context, metarig):
         ui_imports = UI_IMPORTS.copy()
         ui_utilities = UI_UTILITIES.copy()
         ui_register = UI_REGISTER.copy()
+        noparent_bones = []
         for rig in rigs:
             # Go into editmode in the rig armature
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -361,6 +362,8 @@ def generate_rig(context, metarig):
                     ui_utilities += scripts['utilities']
                 if 'register' in scripts:
                     ui_register += scripts['register']
+                if 'noparent_bones' in scripts:
+                    noparent_bones += scripts['noparent_bones']
             elif scripts is not None:
                 ui_scripts += [scripts[0]]
         t.tick("Generate rigs: ")
@@ -381,25 +384,8 @@ def generate_rig(context, metarig):
     # Get a list of all the bones in the armature
     bones = [bone.name for bone in obj.data.bones]
 
-    # Parent any free-floating bones to the root excluding bones with child of constraint.
-    pbones = obj.pose.bones
-
-
-    ik_follow_drivers = []
-
-    if obj.animation_data:
-        for drv in obj.animation_data.drivers:
-            for var in drv.driver.variables:
-                if 'IK_follow' == var.name:
-                    ik_follow_drivers.append(drv.data_path)
-
-    noparent_bones = []
-    for bone in bones:
-        # if 'IK_follow' in pbones[bone].keys():
-        #     noparent_bones += [bone]
-        for d in ik_follow_drivers:
-            if bone in d:
-                noparent_bones += [bone]
+    # Parent any free-floating bones to the root excluding noparent_bones
+    noparent_bones = dict.fromkeys(noparent_bones)
 
     bpy.ops.object.mode_set(mode='EDIT')
     for bone in bones:

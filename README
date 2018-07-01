@@ -65,7 +65,8 @@ There is one final stage to rig generation.  Rigify checks all of the bones
 for "DEF-", "MCH-", and "ORG-" prefixes, and moves those bones to their own
 layers. It also sets all of the "DEF-" bones to deform, and sets all other
 bones to _not_ deform.  And finally, it looks for any bone that does not have
-a parent, and sets the root bone (which Rigify creates) as their parent.
+a parent, and sets the root bone (which Rigify creates) as their parent,
+with the exception of 'noparent_bones' described below.
 
 
 THE GUTS OF A RIG TYPE, BASIC
@@ -241,7 +242,7 @@ Implementation classes are shown in the metarig samples list and generate a samp
 GENERATING A PYTHON UI
 ----------------------
 The generate() method can also, optionally, return a dictionary with data
-used for generating the python UI. The dictionary may have the following
+mainly used for generating the python UI. The dictionary may have the following
 keys (all optional):
 
   'script': python code as list of strings.
@@ -263,6 +264,10 @@ keys (all optional):
   'register': list of class names.
 
     These are used in generating the register() and unregister() functions.
+
+  'noparent_bones': list of bone names.
+
+    These bones are not implicitly parented to the root bone if they have no parent.
 
 The 'utilities', 'imports' and 'register' lists returned by all rigs are concatenated
 and filtered for duplicates before use, in order to allow easy sharing of utility
