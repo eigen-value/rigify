@@ -139,7 +139,7 @@ class RigifyPreferences(AddonPreferences):
             for rig in rig_lists.rigs_dict['external']['rig_list']:
                 r = utils.get_rig_type(rig, custom_rigs_folder)
                 try:
-                    r.add_parameters(RigifyParameters)
+                    r.add_parameters(RigifyParameterValidator(RigifyParameters, rig, RIGIFY_PARAMETER_TABLE))
                 except AttributeError:
                     pass
 
@@ -263,6 +263,58 @@ class RigifyParameters(bpy.types.PropertyGroup):
     name = bpy.props.StringProperty()
 
 
+RIGIFY_PARAMETER_TABLE = { 'name': ('DEFAULT',bpy.props.StringProperty()) }
+
+def format_property_spec(spec):
+    """Turns the return value of bpy.props.SomeProperty(...) into a readable string."""
+    callback, params = spec
+    param_str = ["%s=%r" % (k, v) for k,v in params.items()]
+    return "%s(%s)" % (callback.__name__, ', '.join(param_str))
+
+class RigifyParameterValidator(object):
+    """
+    A wrapper around RigifyParameters that verifies properties
+    defined from rigs for incompatible redefinitions using a table.
+
+    Relies on the implementation details of bpy.props return values:
+    specifically, they just return a tuple containing the real define
+    function, and a dictionary with parameters. This allows comparing
+    parameters before the property is actually defined.
+    """
+    __params = None
+    __rig_name = ''
+    __prop_table = {}
+
+    def __init__(self, params, rig_name, prop_table):
+        self.__params = params
+        self.__rig_name = rig_name
+        self.__prop_table = prop_table
+
+    def __getattr__(self, name):
+        return getattr(self.__params, name)
+
+    def __setattr__(self, name, val):
+        # allow __init__ to work correctly
+        if hasattr(RigifyParameterValidator, name):
+            return object.__setattr__(self, name, val)
+
+        if not (isinstance(val, tuple) and callable(val[0]) and isinstance(val[1], dict)):
+            print("!!! RIGIFY RIG %s: INVALID DEFINITION FOR RIG PARAMETER %s: %r\n" % (self.__rig_name, name, val))
+            return
+
+        if name in self.__prop_table:
+            cur_rig, cur_info = self.__prop_table[name]
+            if val != cur_info:
+                print("!!! RIGIFY RIG %s: REDEFINING PARAMETER %s AS:\n\n    %s\n" % (self.__rig_name, name, format_property_spec(val)))
+                print("!!! PREVIOUS DEFINITION BY %s:\n\n    %s\n" % (cur_rig, format_property_spec(cur_info)))
+
+        # actually defining the property modifies the dictionary with new parameters, so copy it now
+        new_def = (val[0], val[1].copy())
+
+        setattr(self.__params, name, val)
+        self.__prop_table[name] = (self.__rig_name, new_def)
+
+
 class RigifyArmatureLayer(bpy.types.PropertyGroup):
 
     def get_group(self):
@@ -382,7 +434,7 @@ def register():
     for rig in rig_lists.rig_list:
         r = utils.get_rig_type(rig)
         try:
-            r.add_parameters(RigifyParameters)
+            r.add_parameters(RigifyParameterValidator(RigifyParameters, rig, RIGIFY_PARAMETER_TABLE))
         except AttributeError:
             pass
 
