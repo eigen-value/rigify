@@ -22,17 +22,41 @@ import bpy
 from bpy.props import StringProperty
 from mathutils import Color
 
-from .utils import get_rig_type, MetarigError
+from .utils import get_resource, MetarigError
 from .utils import write_metarig, write_widget
 from .utils import unique_name
 from .utils import upgradeMetarigTypes, outdated_types
 from .utils import get_keyed_frames, bones_in_frame
 from .utils import overwrite_prop_animation
+from .utils import RIG_DIR
 from .rigs.utils import get_limb_generated_names
 from . import rig_lists
+from . import template_list
 from . import generate
 from . import rot_mode
+from . import feature_sets
 
+
+def build_type_list(context, rigify_types):
+    rigify_types.clear()
+
+    for r in sorted(rig_lists.rigs):
+        if (context.object.data.active_feature_set in ('all', rig_lists.rigs[r]['feature_set'])
+                or len(feature_sets.feature_set_items(context.scene, context)) == 2
+                ):
+            a = rigify_types.add()
+            a.name = r
+
+
+class DATA_UL_rigify_template_list(bpy.types.UIList):
+    """UIList subclass, to disable renaming in UI"""
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
+        ob = data
+        template = item
+        if template:
+            layout.label(text=template.name, translate=False, icon_value=icon)
+        else:
+            layout.label(text="", translate=False, icon_value=icon)
 
 class DATA_PT_rigify_buttons(bpy.types.Panel):
     bl_label = "Rigify Buttons"
@@ -59,21 +83,18 @@ class DATA_PT_rigify_buttons(bpy.types.Panel):
 
             check_props = ['IK_follow', 'root/parent', 'FK_limb_follow', 'IK_Stretch']
 
-            for obj in bpy.data.objects:
-                if type(obj.data) != bpy.types.Armature:
-                    continue
-                for bone in obj.pose.bones:
-                    if bone.bone.layers[30] and (list(set(bone.keys()) & set(check_props))):
-                        show_warning = True
+            for bone in obj.pose.bones:
+                if bone.bone.layers[30] and (list(set(bone.keys()) & set(check_props))):
+                    show_warning = True
+                    break
+            for b in obj.pose.bones:
+                if b.rigify_type in outdated_types.keys():
+                    if outdated_types[b.rigify_type]:
+                        show_update_metarig = True
+                    else:
+                        show_update_metarig = False
+                        show_not_updatable = True
                         break
-                for b in obj.pose.bones:
-                    if b.rigify_type in outdated_types.keys():
-                        if outdated_types[b.rigify_type]:
-                            show_update_metarig = True
-                        else:
-                            show_update_metarig = False
-                            show_not_updatable = True
-                            break
 
             if show_warning:
                 layout.label(text=WARNING, icon='ERROR')
@@ -93,7 +114,24 @@ class DATA_PT_rigify_buttons(bpy.types.Panel):
                 layout.operator("pose.rigify_upgrade_types", text="Upgrade Metarig")
 
             row = layout.row()
+            # Rig type field
+
+            armature_id_store = C.object.data
+
+            col = layout.column(align=True)
+            col.active = (not 'rig_id' in C.object.data)
+            if len(template_list.templates) > 1:
+                if len(context.object.data.rigify_templates) == 0:
+                    col.operator("pose.rigify_template_init")
+                else:
+                    col.label("UI template for rig:")
+                    col.template_list("DATA_UL_rigify_template_list", "rigify_templates", armature_id_store, "rigify_templates", armature_id_store, "rigify_active_template")
+
+            col.separator()
+            row = col.row()
+            row.active = len(context.object.data.rigify_templates) != 0 or len(template_list.template_list) == 1
             row.operator("pose.rigify_generate", text="Generate Rig", icon='POSE_HLT')
+
             row.enabled = enable_generate_and_advanced
 
             if id_store.rigify_advanced_generation:
@@ -156,36 +194,12 @@ class DATA_PT_rigify_buttons(bpy.types.Panel):
 
         elif obj.mode == 'EDIT':
             # Build types list
-            collection_name = str(id_store.rigify_collection).replace(" ", "")
-
-            for i in range(0, len(id_store.rigify_types)):
-                id_store.rigify_types.remove(0)
-
-            for r in rig_lists.rig_list:
-
-                if collection_name == "All":
-                    a = id_store.rigify_types.add()
-                    a.name = r
-                elif r.startswith(collection_name + '.'):
-                    a = id_store.rigify_types.add()
-                    a.name = r
-                elif (collection_name == "None") and ("." not in r):
-                    a = id_store.rigify_types.add()
-                    a.name = r
-
-            if 'external' in rig_lists.rigs_dict and rig_lists.rigs_dict['external']:
-                for r in rig_lists.rigs_dict['external']['rig_list']:
-                    if collection_name == "All":
-                        a = id_store.rigify_types.add()
-                        a.name = r
-                    elif r.startswith(collection_name + '.'):
-                        a = id_store.rigify_types.add()
-                        a.name = r
-                    elif (collection_name == "None") and ("." not in r):
-                        a = id_store.rigify_types.add()
-                        a.name = r
+            build_type_list(context, id_store.rigify_types)
 
             # Rig type list
+            if len(feature_sets.feature_set_items(context.scene, context)) > 2:
+                row = layout.row()
+                row.prop(context.object.data, "active_feature_set")
             row = layout.row()
             row.template_list("UI_UL_list", "rigify_types", id_store, "rigify_types", id_store, 'rigify_active_type')
 
@@ -587,56 +601,23 @@ class BONE_PT_rigify_buttons(bpy.types.Panel):
         C = context
         id_store = C.window_manager
         bone = context.active_pose_bone
-        collection_name = str(id_store.rigify_collection).replace(" ", "")
         rig_name = str(context.active_pose_bone.rigify_type).replace(" ", "")
 
         layout = self.layout
 
         # Build types list
-        for i in range(0, len(id_store.rigify_types)):
-            id_store.rigify_types.remove(0)
-
-        for r in rig_lists.rig_list:
-            if r in rig_lists.implementation_rigs:
-                continue
-            # collection = r.split('.')[0]  # UNUSED
-            if collection_name == "All":
-                a = id_store.rigify_types.add()
-                a.name = r
-            elif r.startswith(collection_name + '.'):
-                a = id_store.rigify_types.add()
-                a.name = r
-            elif collection_name == "None" and len(r.split('.')) == 1:
-                a = id_store.rigify_types.add()
-                a.name = r
-
-        if 'external' in rig_lists.rigs_dict:
-            for r in rig_lists.rigs_dict['external']['rig_list']:
-                if r in rig_lists.rigs_dict['external']['implementation_rigs']:
-                    continue
-                if collection_name == "All":
-                    a = id_store.rigify_types.add()
-                    a.name = r
-                elif r.startswith(collection_name + '.'):
-                    a = id_store.rigify_types.add()
-                    a.name = r
-                elif collection_name == "None" and len(r.split('.')) == 1:
-                    a = id_store.rigify_types.add()
-                    a.name = r
-
+        build_type_list(context, id_store.rigify_types)
         # Rig type field
+        if len(feature_sets.feature_set_items(context.scene, context)) > 2:
+            row = layout.row()
+            row.prop(context.object.data, "active_feature_set")
         row = layout.row()
-        row.prop_search(bone, "rigify_type", id_store, "rigify_types", text="Rig type:")
+        row.prop_search(bone, "rigify_type", id_store, "rigify_types", text="Rig type")
 
         # Rig type parameters / Rig type non-exist alert
         if rig_name != "":
             try:
-                if 'external' in rig_lists.rigs_dict and rig_name in rig_lists.rigs_dict['external']['rig_list']:
-                    custom_rigs_folder = bpy.context.user_preferences.addons['rigify'].preferences.custom_rigs_folder
-                    rig = get_rig_type(rig_name, custom_rigs_folder)
-                else:
-                    rig = get_rig_type(rig_name)
-                rig.Rig
+                rig = rig_lists.rigs[rig_name]['module']
             except (ImportError, AttributeError):
                 row = layout.row()
                 box = row.box()
@@ -768,6 +749,18 @@ class LayerInit(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class TemplateInit(bpy.types.Operator):
+    """Initialize armature rigify ui templates"""
+
+    bl_idname = "pose.rigify_template_init"
+    bl_label = "Add Rigify UI Templates"
+    bl_options = {'UNDO'}
+
+    def execute(self, context):
+        template_list.fill_ui_template_list(context.object)
+        return {'FINISHED'}
+
+
 class Generate(bpy.types.Operator):
     """Generates a rig from the active metarig armature"""
 
@@ -842,11 +835,7 @@ class Sample(bpy.types.Operator):
             use_global_undo = context.user_preferences.edit.use_global_undo
             context.user_preferences.edit.use_global_undo = False
             try:
-                if 'external' in rig_lists.rigs_dict and self.metarig_type in rig_lists.rigs_dict['external']['rig_list']:
-                    custom_rigs_folder = bpy.context.user_preferences.addons['rigify'].preferences.custom_rigs_folder
-                    rig = get_rig_type(self.metarig_type, custom_rigs_folder)
-                else:
-                    rig = get_rig_type(self.metarig_type)
+                rig = rig_lists.rigs[self.metarig_type]["module"]
                 create_sample = rig.create_sample
             except (ImportError, AttributeError):
                 raise Exception("rig type '" + self.metarig_type + "' has no sample.")
@@ -1349,6 +1338,7 @@ class OBJECT_OT_Rot2Pole(bpy.types.Operator):
 
 def register():
 
+    bpy.utils.register_class(DATA_UL_rigify_template_list)
     bpy.utils.register_class(DATA_OT_rigify_add_bone_groups)
     bpy.utils.register_class(DATA_OT_rigify_use_standard_colors)
     bpy.utils.register_class(DATA_OT_rigify_apply_selection_colors)
@@ -1365,6 +1355,7 @@ def register():
     bpy.utils.register_class(VIEW3D_PT_rigify_animation_tools)
     bpy.utils.register_class(VIEW3D_PT_tools_rigify_dev)
     bpy.utils.register_class(LayerInit)
+    bpy.utils.register_class(TemplateInit)
     bpy.utils.register_class(Generate)
     bpy.utils.register_class(UpgradeMetarigTypes)
     bpy.utils.register_class(SwitchToLegacy)
@@ -1385,6 +1376,7 @@ def register():
 
 def unregister():
 
+    bpy.utils.unregister_class(DATA_UL_rigify_template_list)
     bpy.utils.unregister_class(DATA_OT_rigify_add_bone_groups)
     bpy.utils.unregister_class(DATA_OT_rigify_use_standard_colors)
     bpy.utils.unregister_class(DATA_OT_rigify_apply_selection_colors)
@@ -1401,6 +1393,7 @@ def unregister():
     bpy.utils.unregister_class(VIEW3D_PT_rigify_animation_tools)
     bpy.utils.unregister_class(VIEW3D_PT_tools_rigify_dev)
     bpy.utils.unregister_class(LayerInit)
+    bpy.utils.unregister_class(TemplateInit)
     bpy.utils.unregister_class(Generate)
     bpy.utils.unregister_class(UpgradeMetarigTypes)
     bpy.utils.unregister_class(SwitchToLegacy)
@@ -1417,4 +1410,3 @@ def unregister():
     bpy.utils.unregister_class(OBJECT_OT_Rot2Pole)
 
     rot_mode.unregister()
-

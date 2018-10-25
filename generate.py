@@ -26,15 +26,14 @@ import sys
 from rna_prop_ui import rna_idprop_ui_prop_get
 from collections import OrderedDict
 
-from .utils import MetarigError, new_bone, get_rig_type
-from .utils import ORG_PREFIX, MCH_PREFIX, DEF_PREFIX, WGT_PREFIX, ROOT_NAME, make_original_name
-from .utils import RIG_DIR
+from .utils import MetarigError, new_bone
+from .utils import MCH_PREFIX, DEF_PREFIX, WGT_PREFIX, ROOT_NAME, make_original_name
 from .utils import create_root_widget
 from .utils import random_id
 from .utils import copy_attributes
 from .utils import gamma_correct
-from .rig_ui_template import UI_IMPORTS, UI_BASE_UTILITIES, UI_UTILITIES, UI_SLIDERS, layers_ui, UI_REGISTER
-
+from . import rig_lists
+from . import template_list
 
 RIG_MODULE = "rigs"
 ORG_LAYER = [n == 31 for n in range(0, 32)]  # Armature layer that original bones should be moved to.
@@ -341,10 +340,18 @@ def generate_rig(context, metarig):
         t.tick("Initialize rigs: ")
 
         # Generate all the rigs.
+        armature_store = context.armature
+        if len(template_list.templates) > 1:
+            template_name = armature_store.rigify_templates[armature_store.rigify_active_template].name
+        else:
+            template_name = 'rig_ui_template'
+
+        template = template_list.templates[template_name]
+
         ui_scripts = []
-        ui_imports = UI_IMPORTS.copy()
-        ui_utilities = UI_UTILITIES.copy()
-        ui_register = UI_REGISTER.copy()
+        ui_imports = template.UI_IMPORTS.copy()
+        ui_utilities = template.UI_UTILITIES.copy()
+        ui_register = template.UI_REGISTER.copy()
         noparent_bones = []
         for rig in rigs:
             # Go into editmode in the rig armature
@@ -497,13 +504,13 @@ def generate_rig(context, metarig):
 
     for s in OrderedDict.fromkeys(ui_imports):
         script.write(s + "\n")
-    script.write(UI_BASE_UTILITIES % rig_id)
+    script.write(template.UI_BASE_UTILITIES % rig_id)
     for s in OrderedDict.fromkeys(ui_utilities):
         script.write(s + "\n")
-    script.write(UI_SLIDERS)
+    script.write(template.UI_SLIDERS)
     for s in ui_scripts:
         script.write("\n        " + s.replace("\n", "\n        ") + "\n")
-    script.write(layers_ui(vis_layers, layer_layout))
+    script.write(template.layers_ui(vis_layers, layer_layout))
     script.write("\ndef register():\n")
     ui_register = OrderedDict.fromkeys(ui_register)
     for s in ui_register:
@@ -644,8 +651,9 @@ def get_bone_rigs(obj, bone_name, halt_on_missing=False):
 
         # Get the rig
         try:
-            rig = get_rig_type(rig_type).Rig(obj, bone_name, params)
-        except ImportError:
+            rig = rig_lists.rigs[rig_type]["module"]
+            rig = rig.Rig(obj, bone_name, params)
+        except (KeyError, ImportError):
             message = "Rig Type Missing: python module for type '%s' not found (bone: %s)" % (rig_type, bone_name)
             if halt_on_missing:
                 raise MetarigError(message)

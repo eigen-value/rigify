@@ -1,16 +1,16 @@
 
-import bpy, re, math
+import bpy, math
 from ..widgets import create_foot_widget, create_ballsocket_widget, create_gear_widget
 from .ui import create_script
 from .limb_utils import *
 from mathutils import Vector
-from ...utils import copy_bone, flip_bone, put_bone, create_cube_widget
-from ...utils import strip_org, strip_mch, make_deformer_name, create_widget
+from ...utils import copy_bone, flip_bone, put_bone
+from ...utils import strip_org, strip_mch
 from ...utils import create_circle_widget, create_sphere_widget, create_line_widget
-from ...utils import MetarigError, make_mechanism_name, org
+from ...utils import MetarigError, make_mechanism_name
 from ...utils import create_limb_widget, connected_children_names
 from ...utils import align_bone_y_axis, align_bone_x_axis, align_bone_z_axis
-from ...rig_ui_template import UTILITIES_RIG_LEG, REGISTER_RIG_LEG
+from ...ui_templates.rig_ui_template import UTILITIES_RIG_LEG, REGISTER_RIG_LEG
 from ...utils import ControlLayersOption
 from rna_prop_ui import rna_idprop_ui_prop_get
 from ..widgets import create_ikarrow_widget

@@ -26,8 +26,8 @@ from .animation import get_keyed_frames, bones_in_frame, overwrite_prop_animatio
 
 from .glue import make_constraints_from_string
 
-from .rig import RIG_DIR, METARIG_DIR, MODULE_NAME, outdated_types, upgradeMetarigTypes
-from .rig import get_rig_type, get_metarig_module, write_metarig
+from .rig import RIG_DIR, METARIG_DIR, MODULE_NAME, TEMPLATE_DIR, outdated_types, upgradeMetarigTypes
+from .rig import get_rig_type, get_metarig_module, write_metarig, get_resource
 from .rig import connected_children_names, has_connected_children
 
 from .layers import get_layers, ControlLayersOption

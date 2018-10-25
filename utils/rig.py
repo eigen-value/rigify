@@ -25,6 +25,7 @@ import os
 
 RIG_DIR = "rigs"  # Name of the directory where rig types are kept
 METARIG_DIR = "metarigs"  # Name of the directory where metarigs are kept
+TEMPLATE_DIR = "ui_templates"  # Name of the directory where ui templates are kept
 
 MODULE_NAME = "rigify"  # Windows/Mac blender is weird, so __package__ doesn't work
 
@@ -80,28 +81,25 @@ def upgradeMetarigTypes(metarig, revert=False):
 # Misc
 #=============================================
 
-
 def get_rig_type(rig_type, base_path=''):
+    return get_resource(rig_type, base_path=base_path)
+
+def get_resource(resource_name, base_path=''):
     """ Fetches a rig module by name, and returns it.
     """
-    if not base_path:
-        name = ".%s.%s" % (RIG_DIR, rig_type)
-        submod = importlib.import_module(name, package=MODULE_NAME)
-        importlib.reload(submod)
-    else:
-        if '.' in rig_type:
-            module_subpath = str.join(os.sep, rig_type.split('.'))
-            package = rig_type.split('.')[0]
-            importlib.import_module(package)
-            for sub in rig_type.split('.')[1:]:
-                package = '.'.join([package, sub])
-                importlib.import_module(package)
-        else:
-            module_subpath = rig_type
 
-        spec = importlib.util.spec_from_file_location(rig_type, base_path + module_subpath + '.py')
-        submod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(submod)
+    if '.' in resource_name:
+        module_subpath = str.join(os.sep, resource_name.split('.'))
+        package = resource_name.split('.')[0]
+        for sub in resource_name.split('.')[1:]:
+            package = '.'.join([package, sub])
+            submod = importlib.import_module(package)
+    else:
+        module_subpath = resource_name
+
+    spec = importlib.util.spec_from_file_location(resource_name, os.path.join(base_path, module_subpath + '.py'))
+    submod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(submod)
     return submod
 
 
@@ -274,7 +272,23 @@ def write_metarig(obj, layers=False, func_name="create", groups=False):
 
         code.append("\n    arm.layers = [(x in " + str(active_layers) + ") for x in range(" + str(len(arm.layers)) + ")]")
 
+    if func_name == "create":
+        active_template = arm.rigify_active_template
+        template_name = arm.rigify_templates[active_template].name
+        code.append("\n    # Select proper UI template")
+        code.append("    template_name = '{}'".format(template_name))
+        code.append("    arm_templates = arm.rigify_templates.items()")
+        code.append("    template_index = None")
+        code.append("    for i, template in enumerate(arm_templates):")
+        code.append("        if template[0] == template_name:")
+        code.append("            template_index = i")
+        code.append("            break")
+        code.append("    if template_index is None:")
+        code.append("        template_index = 0 # Default to something...")
+        code.append("    else:")
+        code.append("        arm.rigify_active_template = template_index")
+
     code.append('\nif __name__ == "__main__":')
-    code.append("    " + func_name + "(bpy.context.active_object)")
+    code.append("    " + func_name + "(bpy.context.active_object)\n")
 
     return "\n".join(code)
