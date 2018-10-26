@@ -25,7 +25,6 @@ from string import capwords
 import bpy
 
 from . import utils
-from . import template_list
 
 
 class ArmatureSubMenu(bpy.types.Menu):
@@ -89,8 +88,6 @@ def make_metarig_add_execute(m):
         bpy.ops.object.mode_set(mode='EDIT')
         bones = context.active_object.data.edit_bones
         bones.remove(bones[0])
-
-        template_list.fill_ui_template_list(obj)
 
         # Create metarig
         m.create(obj)
