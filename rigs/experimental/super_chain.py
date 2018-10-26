@@ -104,10 +104,10 @@ class Rig:
     #     else:
     #         return 'ERROR'
 
-    def orient_bone( self, eb, axis, scale, reverse = False ):
-        v = Vector((0,0,0))
+    def orient_bone(self, eb, axis, scale, reverse=False):
+        v = Vector((0, 0, 0))
 
-        setattr(v,axis,scale)
+        setattr(v, axis, scale)
 
         if reverse:
             tail_vec = v * self.obj.matrix_world
@@ -380,7 +380,7 @@ class Rig:
     def create_tail( self, tail_bones ):
         pass
 
-    def create_chain(self):
+    def create_chain(self, pivot=None):
         org_bones = self.org_bones
 
         bpy.ops.object.mode_set(mode='EDIT')
@@ -497,6 +497,10 @@ class Rig:
                 put_bone(self.obj, ctrl_name, eb[b].tail)
 
                 ctrl += [ctrl_name]
+
+        # Pivot alignment
+        if pivot:
+            align_bone_x_axis(self.obj, pivot, -v_point)
 
         conv_twk = ''
         # Convergence tweak
@@ -1156,7 +1160,9 @@ class Rig:
         bones['def'] = self.create_deform()
         if len(self.org_bones) > 2:
             bones['pivot'] = self.create_pivot()
-        bones['chain'] = self.create_chain()
+            bones['chain'] = self.create_chain(bones['pivot']['ctrl'])
+        else:
+            bones['chain'] = self.create_chain()
 
         # Adjust Roll in SINGLE_BONE case
         #if self.SINGLE_BONE:
