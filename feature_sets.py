@@ -27,8 +27,9 @@ def feature_set_items(scene, context):
     feature_sets_path = os.path.join(
         bpy.utils.script_path_user(), 'rigify')
     items = [('all',)*3, ('rigify',)*3, ]
-    for fs in os.listdir(feature_sets_path):
-        items.append((fs,)*3)
+    if os.path.exists(feature_sets_path):
+        for fs in os.listdir(feature_sets_path):
+            items.append((fs,)*3)
 
     return items
 
@@ -82,7 +83,8 @@ class DATA_OT_rigify_remove_feature_set(bpy.types.Operator):
         addon_prefs = context.user_preferences.addons[__package__].preferences
 
         rigify_config_path = os.path.join(bpy.utils.script_path_user(), 'rigify')
-        rmtree(os.path.join(rigify_config_path, self.featureset))
+        if os.path.exists(os.path.join(rigify_config_path, self.featureset)):
+            rmtree(os.path.join(rigify_config_path, self.featureset))
 
         addon_prefs.update_external_rigs()
         return {'FINISHED'}

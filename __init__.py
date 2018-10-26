@@ -128,8 +128,7 @@ class RigifyPreferences(AddonPreferences):
 
         feature_sets_path = os.path.join(bpy.utils.script_path_user(), 'rigify')
 
-        invalid_path = not os.path.exists(feature_sets_path)
-        if not invalid_path:
+        if os.path.exists(feature_sets_path):
             if feature_sets_path not in sys.path:
                 sys.path.append(feature_sets_path)
             # Reload rigs

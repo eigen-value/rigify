@@ -22,13 +22,12 @@ import bpy
 from bpy.props import StringProperty
 from mathutils import Color
 
-from .utils import get_resource, MetarigError
+from .utils import MetarigError
 from .utils import write_metarig, write_widget
 from .utils import unique_name
 from .utils import upgradeMetarigTypes, outdated_types
 from .utils import get_keyed_frames, bones_in_frame
 from .utils import overwrite_prop_animation
-from .utils import RIG_DIR
 from .rigs.utils import get_limb_generated_names
 from . import rig_lists
 from . import template_list
@@ -129,7 +128,7 @@ class DATA_PT_rigify_buttons(bpy.types.Panel):
 
             col.separator()
             row = col.row()
-            row.active = len(context.object.data.rigify_templates) != 0 or len(template_list.template_list) == 1
+            row.active = len(context.object.data.rigify_templates) != 0 or len(template_list.templates) == 1
             row.operator("pose.rigify_generate", text="Generate Rig", icon='POSE_HLT')
 
             row.enabled = enable_generate_and_advanced
