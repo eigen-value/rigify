@@ -205,12 +205,13 @@ def get_external_metarigs(feature_sets_path):
     # Clear and fill metarigs public variables
     metarigs.clear()
     get_internal_metarigs()
+    metarigs['external'] = {}
 
     for feature_set in os.listdir(feature_sets_path):
         if feature_set:
             utils.get_resource(os.path.join(feature_set, '__init__'), base_path=feature_sets_path)
 
-            metarigs['external'] = get_metarigs(feature_sets_path, os.path.join(feature_set, utils.METARIG_DIR))
+            metarigs['external'].update(get_metarigs(feature_sets_path, os.path.join(feature_set, utils.METARIG_DIR)))
 
     metarig_ops.clear()
     armature_submenus.clear()
