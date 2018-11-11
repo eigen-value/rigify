@@ -268,13 +268,15 @@ class RigifyParameters(bpy.types.PropertyGroup):
     name = bpy.props.StringProperty()
 
 
-RIGIFY_PARAMETER_TABLE = { 'name': ('DEFAULT',bpy.props.StringProperty()) }
+RIGIFY_PARAMETER_TABLE = {'name': ('DEFAULT', bpy.props.StringProperty())}
+
 
 def format_property_spec(spec):
     """Turns the return value of bpy.props.SomeProperty(...) into a readable string."""
     callback, params = spec
-    param_str = ["%s=%r" % (k, v) for k,v in params.items()]
+    param_str = ["%s=%r" % (k, v) for k, v in params.items()]
     return "%s(%s)" % (callback.__name__, ', '.join(param_str))
+
 
 class RigifyParameterValidator(object):
     """
@@ -342,6 +344,7 @@ class RigifyArmatureLayer(bpy.types.PropertyGroup):
                                   get=get_group, set=set_group, description='Assign Bone Group to this layer')
 
 ##### REGISTER #####
+
 
 def register():
     ui.register()
@@ -454,14 +457,14 @@ def register():
         for rig in rig_lists.rig_list:
             r = utils.get_rig_type(rig)
             try:
-                r.add_parameters(RigifyParameters)
+                r.add_parameters(RigifyParameterValidator(RigifyParameters, rig, RIGIFY_PARAMETER_TABLE))
             except AttributeError:
                 pass
     else:
         for rig in rig_lists.rigs:
             r = rig_lists.rigs[rig]['module']
             try:
-                r.add_parameters(RigifyParameters)
+                r.add_parameters(RigifyParameterValidator(RigifyParameters, rig, RIGIFY_PARAMETER_TABLE))
             except AttributeError:
                 pass
 

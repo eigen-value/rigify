@@ -974,7 +974,7 @@ def add_parameters(params):
 
     params.make_deform = bpy.props.BoolProperty(
         name="Deform",
-        default= True,
+        default=True,
         description="Create a deform bone for the copy"
     )
 
@@ -1014,9 +1014,6 @@ def add_parameters(params):
 
     IDStore = bpy.types.WindowManager
     IDStore.other_eyes = bpy.props.CollectionProperty(type=EyeName)
-
-    params.set_paired = set_paired
-    params.get_paired = get_paired
 
     params.paired_eye = bpy.props.StringProperty(
         name='Paired eye',
