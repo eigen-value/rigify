@@ -27,6 +27,67 @@ from .errors import MetarigError
 from .naming import strip_org, make_mechanism_name, insert_before_lr
 
 #=======================
+# Bone collection
+#=======================
+
+class BoneDict(dict):
+    """
+    Special dictionary for holding bone names in a structured way.
+
+    Allows access to contained items as attributes, and only
+    accepts certain types of values.
+    """
+
+    @staticmethod
+    def __sanitize_attr(key, value):
+        if hasattr(BoneDict, key):
+            raise KeyError("Invalid BoneDict key: %s" % (key))
+
+        if (value is None or
+            isinstance(value, str) or
+            isinstance(value, list) or
+            isinstance(value, BoneDict)):
+            return value
+
+        if isinstance(value, dict):
+            return BoneDict(value)
+
+        raise ValueError("Invalid BoneDict value: %r" % (value))
+
+    def __init__(self, *args, **kwargs):
+        super(BoneDict, self).__init__()
+
+        for key, value in dict(*args, **kwargs).items():
+            dict.__setitem__(self, key, BoneDict.__sanitize_attr(key, value))
+
+        self.__dict__ = self
+
+    def __repr__(self):
+        return "BoneDict(%s)" % (dict.__repr__(self))
+
+    def __setitem__(self, key, value):
+        dict.__setitem__(self, key, BoneDict.__sanitize_attr(key, value))
+
+    def update(self, *args, **kwargs):
+        for key, value in dict(*args, **kwargs).items():
+            dict.__setitem__(self, key, BoneDict.__sanitize_attr(key, value))
+
+    def flatten(self):
+        """Return all contained bones as a list."""
+
+        all_bones = []
+
+        for item in self.values():
+            if isinstance(item, BoneDict):
+                all_bones.extend(item.flatten())
+            elif isinstance(item, list):
+                all_bones.extend(item)
+            elif item is not None:
+                all_bones.append(item)
+
+        return all_bones
+
+#=======================
 # Bone manipulation
 #=======================
 
