@@ -37,11 +37,9 @@ if "bpy" in locals():
     importlib.reload(utils)
     importlib.reload(metarig_menu)
     importlib.reload(rig_lists)
-    importlib.reload(template_list)
     importlib.reload(feature_sets)
 else:
-    from . import (utils, rig_lists, template_list,
-                   generate, ui, metarig_menu, feature_sets)
+    from . import (utils, rig_lists, generate, ui, metarig_menu, feature_sets)
 
 import bpy
 import sys
@@ -138,10 +136,6 @@ class RigifyPreferences(AddonPreferences):
             # Reload metarigs
             print('Reloading external metarigs...')
             metarig_menu.get_external_metarigs(feature_sets_path)
-
-            # Reload templates
-            print('Reloading external templates...')
-            template_list.get_external_templates(feature_sets_path)
 
     legacy_mode = BoolProperty(
         name='Rigify Legacy Mode',
@@ -260,10 +254,6 @@ class RigifySelectionColors(bpy.types.PropertyGroup):
                                            )
 
 
-class RigifyTemplate(bpy.types.PropertyGroup):
-    name = bpy.props.StringProperty()
-
-
 class RigifyParameters(bpy.types.PropertyGroup):
     name = bpy.props.StringProperty()
 
@@ -352,7 +342,6 @@ def register():
     metarig_menu.register()
 
     bpy.utils.register_class(RigifyName)
-    bpy.utils.register_class(RigifyTemplate)
     bpy.utils.register_class(RigifyParameters)
 
     bpy.utils.register_class(RigifyColorSet)
@@ -447,8 +436,6 @@ def register():
         # update legacy on restart or reload
         bpy.context.user_preferences.addons['rigify'].preferences.legacy_mode = True
     IDStore = bpy.types.Armature
-    IDStore.rigify_templates = bpy.props.CollectionProperty(type=RigifyTemplate)
-    IDStore.rigify_active_template = bpy.props.IntProperty(name="Rigify Active Template", description="The selected ui template", default=0)
 
     bpy.context.user_preferences.addons['rigify'].preferences.update_external_rigs()
 
@@ -490,11 +477,8 @@ def unregister():
     del IDStore.rigify_transfer_end_frame
 
     IDStore = bpy.types.Armature
-    del IDStore.rigify_templates
-    del IDStore.rigify_active_template
 
     bpy.utils.unregister_class(RigifyName)
-    bpy.utils.unregister_class(RigifyTemplate)
     bpy.utils.unregister_class(RigifyParameters)
 
     bpy.utils.unregister_class(RigifyColorSet)

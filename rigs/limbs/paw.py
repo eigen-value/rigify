@@ -8,7 +8,7 @@ from ...utils import create_circle_widget, create_sphere_widget, create_line_wid
 from ...utils import MetarigError, make_mechanism_name
 from ...utils import create_limb_widget, connected_children_names
 from ...utils import align_bone_x_axis, align_bone_z_axis
-from ...ui_templates.rig_ui_template import UTILITIES_RIG_LEG, REGISTER_RIG_LEG
+from ...rig_ui_template import UTILITIES_RIG_LEG, REGISTER_RIG_LEG
 from ...utils import ControlLayersOption
 from rna_prop_ui import rna_idprop_ui_prop_get
 from ..widgets import create_ikarrow_widget, create_gear_widget

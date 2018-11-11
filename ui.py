@@ -30,7 +30,6 @@ from .utils import get_keyed_frames, bones_in_frame
 from .utils import overwrite_prop_animation
 from .rigs.utils import get_limb_generated_names
 from . import rig_lists
-from . import template_list
 from . import generate
 from . import rot_mode
 from . import feature_sets
@@ -46,16 +45,6 @@ def build_type_list(context, rigify_types):
             a = rigify_types.add()
             a.name = r
 
-
-class DATA_UL_rigify_template_list(bpy.types.UIList):
-    """UIList subclass, to disable renaming in UI"""
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
-        ob = data
-        template = item
-        if template:
-            layout.label(text=template.name, translate=False, icon_value=icon)
-        else:
-            layout.label(text="", translate=False, icon_value=icon)
 
 class DATA_PT_rigify_buttons(bpy.types.Panel):
     bl_label = "Rigify Buttons"
@@ -119,16 +108,9 @@ class DATA_PT_rigify_buttons(bpy.types.Panel):
 
             col = layout.column(align=True)
             col.active = (not 'rig_id' in C.object.data)
-            if len(template_list.templates) > 1:
-                if len(context.object.data.rigify_templates) == 0:
-                    col.operator("pose.rigify_template_init")
-                else:
-                    col.label("UI template for rig:")
-                    col.template_list("DATA_UL_rigify_template_list", "rigify_templates", armature_id_store, "rigify_templates", armature_id_store, "rigify_active_template")
 
             col.separator()
             row = col.row()
-            row.active = len(context.object.data.rigify_templates) != 0 or len(template_list.templates) == 1
             row.operator("pose.rigify_generate", text="Generate Rig", icon='POSE_HLT')
 
             row.enabled = enable_generate_and_advanced
@@ -200,7 +182,6 @@ class DATA_PT_rigify_buttons(bpy.types.Panel):
                 row = layout.row()
                 row.prop(context.object.data, "active_feature_set")
             row = layout.row()
-            row.template_list("UI_UL_list", "rigify_types", id_store, "rigify_types", id_store, 'rigify_active_type')
 
             props = layout.operator("armature.metarig_sample_add", text="Add sample")
             props.metarig_type = id_store.rigify_types[id_store.rigify_active_type].name
@@ -745,18 +726,6 @@ class LayerInit(bpy.types.Operator):
             arm.rigify_layers.add()
         arm.rigify_layers[28].name = 'Root'
         arm.rigify_layers[28].row = 14
-        return {'FINISHED'}
-
-
-class TemplateInit(bpy.types.Operator):
-    """Initialize armature rigify ui templates"""
-
-    bl_idname = "pose.rigify_template_init"
-    bl_label = "Add Rigify UI Templates"
-    bl_options = {'UNDO'}
-
-    def execute(self, context):
-        template_list.fill_ui_template_list(context.object)
         return {'FINISHED'}
 
 
@@ -1337,7 +1306,6 @@ class OBJECT_OT_Rot2Pole(bpy.types.Operator):
 
 def register():
 
-    bpy.utils.register_class(DATA_UL_rigify_template_list)
     bpy.utils.register_class(DATA_OT_rigify_add_bone_groups)
     bpy.utils.register_class(DATA_OT_rigify_use_standard_colors)
     bpy.utils.register_class(DATA_OT_rigify_apply_selection_colors)
@@ -1354,7 +1322,6 @@ def register():
     bpy.utils.register_class(VIEW3D_PT_rigify_animation_tools)
     bpy.utils.register_class(VIEW3D_PT_tools_rigify_dev)
     bpy.utils.register_class(LayerInit)
-    bpy.utils.register_class(TemplateInit)
     bpy.utils.register_class(Generate)
     bpy.utils.register_class(UpgradeMetarigTypes)
     bpy.utils.register_class(SwitchToLegacy)
@@ -1375,7 +1342,6 @@ def register():
 
 def unregister():
 
-    bpy.utils.unregister_class(DATA_UL_rigify_template_list)
     bpy.utils.unregister_class(DATA_OT_rigify_add_bone_groups)
     bpy.utils.unregister_class(DATA_OT_rigify_use_standard_colors)
     bpy.utils.unregister_class(DATA_OT_rigify_apply_selection_colors)
@@ -1392,7 +1358,6 @@ def unregister():
     bpy.utils.unregister_class(VIEW3D_PT_rigify_animation_tools)
     bpy.utils.unregister_class(VIEW3D_PT_tools_rigify_dev)
     bpy.utils.unregister_class(LayerInit)
-    bpy.utils.unregister_class(TemplateInit)
     bpy.utils.unregister_class(Generate)
     bpy.utils.unregister_class(UpgradeMetarigTypes)
     bpy.utils.unregister_class(SwitchToLegacy)

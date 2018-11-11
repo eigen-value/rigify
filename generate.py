@@ -33,7 +33,7 @@ from .utils import random_id
 from .utils import copy_attributes
 from .utils import gamma_correct
 from . import rig_lists
-from . import template_list
+from . import rig_ui_template
 
 RIG_MODULE = "rigs"
 ORG_LAYER = [n == 31 for n in range(0, 32)]  # Armature layer that original bones should be moved to.
@@ -341,17 +341,11 @@ def generate_rig(context, metarig):
 
         # Generate all the rigs.
         armature_store = context.armature
-        if len(template_list.templates) > 1:
-            template_name = armature_store.rigify_templates[armature_store.rigify_active_template].name
-        else:
-            template_name = 'rig_ui_template'
-
-        template = template_list.templates[template_name]
 
         ui_scripts = []
-        ui_imports = template.UI_IMPORTS.copy()
-        ui_utilities = template.UI_UTILITIES.copy()
-        ui_register = template.UI_REGISTER.copy()
+        ui_imports = rig_ui_template.UI_IMPORTS.copy()
+        ui_utilities = rig_ui_template.UI_UTILITIES.copy()
+        ui_register = rig_ui_template.UI_REGISTER.copy()
         noparent_bones = []
         for rig in rigs:
             # Go into editmode in the rig armature
@@ -504,13 +498,13 @@ def generate_rig(context, metarig):
 
     for s in OrderedDict.fromkeys(ui_imports):
         script.write(s + "\n")
-    script.write(template.UI_BASE_UTILITIES % rig_id)
+    script.write(rig_ui_template.UI_BASE_UTILITIES % rig_id)
     for s in OrderedDict.fromkeys(ui_utilities):
         script.write(s + "\n")
-    script.write(template.UI_SLIDERS)
+    script.write(rig_ui_template.UI_SLIDERS)
     for s in ui_scripts:
         script.write("\n        " + s.replace("\n", "\n        ") + "\n")
-    script.write(template.layers_ui(vis_layers, layer_layout))
+    script.write(rig_ui_template.layers_ui(vis_layers, layer_layout))
     script.write("\ndef register():\n")
     ui_register = OrderedDict.fromkeys(ui_register)
     for s in ui_register:
