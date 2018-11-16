@@ -99,11 +99,11 @@ class Rig:
         setattr(v,axis,scale)
 
         if reverse:
-            tail_vec = v * self.obj.matrix_world
+            tail_vec = v @ self.obj.matrix_world
             eb.head[:] = eb.tail
             eb.tail[:] = eb.head + tail_vec
         else:
-            tail_vec = v * self.obj.matrix_world
+            tail_vec = v @ self.obj.matrix_world
             eb.tail[:] = eb.head + tail_vec
 
 
@@ -408,7 +408,7 @@ class Rig:
         const        = owner_pb.constraints.new( constraint['constraint'] )
         const.target = self.obj
 
-        # filter contraint props to those that actually exist in the currnet
+        # filter constraint props to those that actually exist in the currnet
         # type of constraint, then assign values to each
         for p in [ k for k in constraint.keys() if k in dir(const) ]:
             setattr( const, p, constraint[p] )
@@ -554,12 +554,12 @@ class Rig:
         bpy.ops.object.mode_set(mode ='OBJECT')
         pb = self.obj.pose.bones
 
-        # deform bones bbone segements
+        # deform bones bbone segments
         for bone in bones['def'][:-1]:
             self.obj.data.bones[bone].bbone_segments = 8
 
-        self.obj.data.bones[ bones['def'][0]  ].bbone_in  = 0.0
-        self.obj.data.bones[ bones['def'][-2] ].bbone_out = 0.0
+        self.obj.data.bones[ bones['def'][0]  ].bbone_easein  = 0.0
+        self.obj.data.bones[ bones['def'][-2] ].bbone_easeout = 0.0
 
         # Locks
         tweaks =  bones['neck']['tweak'] + bones['chest']['tweak']

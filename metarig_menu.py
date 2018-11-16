@@ -19,7 +19,6 @@
 # <pep8 compliant>
 
 import os
-import sys
 from string import capwords
 
 import bpy
@@ -32,7 +31,7 @@ class ArmatureSubMenu(bpy.types.Menu):
 
     def draw(self, context):
         layout = self.layout
-        layout.label(self.bl_label)
+        layout.label(text=self.bl_label)
         for op, name in self.operators:
             text = capwords(name.replace("_", " ")) + " (Meta-Rig)"
             layout.operator(op, icon='OUTLINER_OB_ARMATURE', text=text)
@@ -177,27 +176,35 @@ create_metarig_ops()
 create_menu_funcs()
 create_armature_submenus()
 
+
+### Registering ###
+
+
 def register():
+    from bpy.utils import register_class
+
     for cl in metarig_ops:
         for mop, name in metarig_ops[cl]:
-            bpy.utils.register_class(mop)
+            register_class(mop)
 
     for arm_sub in armature_submenus:
-        bpy.utils.register_class(arm_sub)
+        register_class(arm_sub)
 
     for mf in menu_funcs:
-        bpy.types.INFO_MT_armature_add.append(mf)
+        bpy.types.VIEW3D_MT_armature_add.append(mf)
 
 def unregister():
+    from bpy.utils import unregister_class
+
     for cl in metarig_ops:
         for mop, name in metarig_ops[cl]:
-            bpy.utils.unregister_class(mop)
+            unregister_class(mop)
 
     for arm_sub in armature_submenus:
-        bpy.utils.unregister_class(arm_sub)
+        unregister_class(arm_sub)
 
     for mf in menu_funcs:
-        bpy.types.INFO_MT_armature_add.remove(mf)
+        bpy.types.VIEW3D_MT_armature_add.remove(mf)
 
 def get_external_metarigs(feature_sets_path):
     unregister()

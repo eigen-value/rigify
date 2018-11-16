@@ -29,6 +29,7 @@ from collections import OrderedDict
 from .utils import MetarigError, new_bone
 from .utils import MCH_PREFIX, DEF_PREFIX, WGT_PREFIX, ROOT_NAME, make_original_name
 from .utils import create_root_widget
+from .utils import ensure_widget_collection
 from .utils import random_id
 from .utils import copy_attributes
 from .utils import gamma_correct
@@ -72,7 +73,11 @@ def generate_rig(context, metarig):
     bpy.ops.object.mode_set(mode='OBJECT')
 
     scene = context.scene
+    view_layer = context.view_layer
+    collection = context.collection
+    layer_collection = context.layer_collection
     id_store = context.window_manager
+
     #------------------------------------------
     # Create/find the rig object and set it up
 
@@ -96,13 +101,13 @@ def generate_rig(context, metarig):
             rig_old_name = name
             name = rig_new_name or name
             obj = bpy.data.objects.new(name, bpy.data.armatures.new(name))
-            obj.draw_type = 'WIRE'
-            scene.objects.link(obj)
+            obj.display_type = 'WIRE'
+            collection.objects.link(obj)
     else:
         name = rig_new_name or "rig"
         obj = bpy.data.objects.new(name, bpy.data.armatures.new(name))  # in case name 'rig' exists it will be rig.001
-        obj.draw_type = 'WIRE'
-        scene.objects.link(obj)
+        obj.display_type = 'WIRE'
+        collection.objects.link(obj)
 
     id_store.rigify_target_rig = obj.name
     obj.data.pose_position = 'POSE'
@@ -112,24 +117,17 @@ def generate_rig(context, metarig):
     obj.animation_data_clear()
 
     # Select generated rig object
-    metarig.select = False
-    obj.select = True
-    scene.objects.active = obj
+    metarig.select_set(False)
+    obj.select_set(True)
+    view_layer.objects.active = obj
 
     # Remove wgts if force update is set
     wgts_group_name = "WGTS_" + (rig_old_name or obj.name)
     if wgts_group_name in scene.objects and id_store.rigify_force_widget_update:
-        bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
-        for i, lyr in enumerate(WGT_LAYERS):
-            if lyr:
-                context.scene.layers[i] = True
         for wgt in bpy.data.objects[wgts_group_name].children:
-            wgt.select = True
+            wgt.select_set(True)
         bpy.ops.object.delete(use_global=False)
-        for i, lyr in enumerate(WGT_LAYERS):
-            if lyr:
-                context.scene.layers[i] = False
         if rig_old_name:
             bpy.data.objects[wgts_group_name].name = "WGTS_" + obj.name
 
@@ -149,18 +147,18 @@ def generate_rig(context, metarig):
     # Create temporary duplicates for merging
     temp_rig_1 = metarig.copy()
     temp_rig_1.data = metarig.data.copy()
-    scene.objects.link(temp_rig_1)
+    collection.objects.link(temp_rig_1)
 
     temp_rig_2 = metarig.copy()
     temp_rig_2.data = obj.data
-    scene.objects.link(temp_rig_2)
+    collection.objects.link(temp_rig_2)
 
     # Select the temp rigs for merging
     for objt in scene.objects:
-        objt.select = False  # deselect all objects
-    temp_rig_1.select = True
-    temp_rig_2.select = True
-    scene.objects.active = temp_rig_2
+        objt.select_set(False)  # deselect all objects
+    temp_rig_1.select_set(True)
+    temp_rig_2.select_set(True)
+    view_layer.objects.active = temp_rig_2
 
     # Merge the temporary rigs
     bpy.ops.object.join()
@@ -170,9 +168,9 @@ def generate_rig(context, metarig):
 
     # Select the generated rig
     for objt in scene.objects:
-        objt.select = False  # deselect all objects
-    obj.select = True
-    scene.objects.active = obj
+        objt.select_set(False)  # deselect all objects
+    obj.select_set(True)
+    view_layer.objects.active = obj
 
     # Copy over bone properties
     for bone in metarig.data.bones:
@@ -180,8 +178,8 @@ def generate_rig(context, metarig):
 
         # B-bone stuff
         bone_gen.bbone_segments = bone.bbone_segments
-        bone_gen.bbone_in = bone.bbone_in
-        bone_gen.bbone_out = bone.bbone_out
+        bone_gen.bbone_easein = bone.bbone_easein
+        bone_gen.bbone_easeout = bone.bbone_easeout
 
     # Copy over the pose_bone properties
     for bone in metarig.pose.bones:
@@ -306,6 +304,9 @@ def generate_rig(context, metarig):
 
     t.tick("Create root bone: ")
 
+    # Create/find widge collection
+    widget_collection = ensure_widget_collection(context)
+
     # Create Group widget
     # wgts_group_name = "WGTS"
     if wgts_group_name not in scene.objects:
@@ -314,21 +315,14 @@ def generate_rig(context, metarig):
             bpy.data.objects.remove(bpy.data.objects[wgts_group_name])
         mesh = bpy.data.meshes.new(wgts_group_name)
         wgts_obj = bpy.data.objects.new(wgts_group_name, mesh)
-        scene.objects.link(wgts_obj)
-        wgts_obj.layers = WGT_LAYERS
+        widget_collection.objects.link(wgts_obj)
         t.tick("Create main WGTS: ")
     #
     # if id_store.rigify_generate_mode == 'new':
     #     bpy.ops.object.select_all(action='DESELECT')
     #     for wgt in bpy.data.objects[wgts_group_name].children:
-    #         wgt.select = True
-    #     for i, lyr in enumerate(WGT_LAYERS):
-    #         if lyr:
-    #             context.scene.layers[i] = True
+    #         wgt.select_set(True)
     #     bpy.ops.object.make_single_user(obdata=True)
-    #     for i, lyr in enumerate(WGT_LAYERS):
-    #         if lyr:
-    #             context.scene.layers[i] = False
 
     #----------------------------------
     try:
@@ -340,8 +334,6 @@ def generate_rig(context, metarig):
         t.tick("Initialize rigs: ")
 
         # Generate all the rigs.
-        armature_store = context.armature
-
         ui_scripts = []
         ui_imports = rig_ui_template.UI_IMPORTS.copy()
         ui_utilities = rig_ui_template.UI_UTILITIES.copy()
@@ -350,8 +342,8 @@ def generate_rig(context, metarig):
         for rig in rigs:
             # Go into editmode in the rig armature
             bpy.ops.object.mode_set(mode='OBJECT')
-            context.scene.objects.active = obj
-            obj.select = True
+            context.view_layer.objects.active = obj
+            obj.select_set(True)
             bpy.ops.object.mode_set(mode='EDIT')
             scripts = rig.generate()
             if isinstance(scripts, dict):
@@ -525,17 +517,7 @@ def generate_rig(context, metarig):
     create_bone_groups(obj, metarig)
 
     # Add rig_ui to logic
-    skip = False
-    ctrls = obj.game.controllers
-
-    for c in ctrls:
-        if 'Python' in c.name and c.text.name == script.name:
-            skip = True
-            break
-    if not skip:
-        bpy.ops.logic.controller_add(type='PYTHON', object=obj.name)
-        ctrl = obj.game.controllers[-1]
-        ctrl.text = bpy.data.texts[script.name]
+    create_persistent_rig_ui(obj, script)
 
     # Do final gluing
     for rig in rigs:
@@ -561,6 +543,11 @@ def generate_rig(context, metarig):
             child.parent_bone = sub_parent
             child.matrix_world = mat
 
+    #----------------------------------
+    # Restore active collection
+    view_layer.active_layer_collection = layer_collection
+
+
 def create_selection_sets(obj, metarig):
 
     # Check if selection sets addon is installed
@@ -570,13 +557,13 @@ def create_selection_sets(obj, metarig):
 
     bpy.ops.object.mode_set(mode='POSE')
 
-    bpy.context.scene.objects.active = obj
-    obj.select = True
-    metarig.select = False
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    metarig.select_set(False)
     pbones = obj.pose.bones
 
     for i, name in enumerate(metarig.data.rigify_layers.keys()):
-        if name == '' or not metarig.data.rigify_layers[i].set:
+        if name == '' or not metarig.data.rigify_layers[i].selset:
             continue
 
         bpy.ops.pose.select_all(action='DESELECT')
@@ -611,7 +598,7 @@ def create_bone_groups(obj, metarig):
         g_id = l.group - 1
         name = groups[g_id].name
         if name not in obj.pose.bone_groups.keys():
-            bg = obj.pose.bone_groups.new(name)
+            bg = obj.pose.bone_groups.new(name=name)
             bg.color_set = 'CUSTOM'
             bg.colors.normal = gamma_correct(groups[g_id].normal)
             bg.colors.select = gamma_correct(groups[g_id].select)
@@ -628,6 +615,31 @@ def create_bone_groups(obj, metarig):
         if g_id >= 0:
             name = groups[g_id].name
             b.bone_group = obj.pose.bone_groups[name]
+
+
+def create_persistent_rig_ui(obj, script):
+    """Make sure the ui script always follows the rig around"""
+    skip = False
+    driver = None
+
+    for fcurve in obj.animation_data.drivers:
+        if fcurve.data_path == 'pass_index':
+            driver = fcurve.driver
+            for variable in driver.variables:
+                if variable.name == script.name:
+                    skip = True
+                    break
+            break
+
+    if not skip:
+        if not driver:
+            fcurve = obj.driver_add("pass_index")
+            driver = fcurve.driver
+
+        variable = driver.variables.new()
+        variable.name = script.name
+        variable.targets[0].id_type = 'TEXT'
+        variable.targets[0].id = script
 
 
 def get_bone_rigs(obj, bone_name, halt_on_missing=False):
