@@ -1,9 +1,6 @@
-import bpy
-import importlib
-from mathutils import Matrix
 from mathutils import Matrix, Vector
 from math import pi, sin, cos
-from ..utils import create_widget, create_circle_polygon
+from ..utils import create_widget
 
 MODULE_NAME = "super_widgets"  # Windows/Mac blender is weird, so __package__ doesn't work
 
@@ -185,15 +182,13 @@ def create_gear_widget(rig, bone_name, size=1.0, bone_transform_name=None):
         return None
 
 
-def create_widget_from_cluster(rig, bone_name, cluster, size=1.0, bone_transform_name=None):
+def create_widget_from_cluster(rig, bone_name, cluster, bone_transform_name=None):
     """
 
     :param rig:
     :param bone_name:
     :param cluster: point cloud
     :type cluster: list(Vector)
-    :param size:
-    :param direction:
     :param bone_transform_name:
     :return:
     """

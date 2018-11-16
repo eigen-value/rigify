@@ -45,6 +45,15 @@ def get_layers(layers):
         else:
             return [x in layers for x in range(0, 32)]
 
+def get_layer_collection_from_collection(children, collection):
+    for layer_collection in children:
+        if collection == layer_collection.collection:
+            return layer_collection
+
+        # go recursive
+        layer_collection = get_layer_collection_from_collection(layer_collection.children, collection)
+        if layer_collection:
+            return layer_collection
 
 #=============================================
 # UI utilities

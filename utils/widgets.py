@@ -22,6 +22,7 @@ import bpy
 import math
 
 from .errors import MetarigError
+from .layers import get_layer_collection_from_collection
 
 WGT_PREFIX = "WGT-"  # Prefix for widget objects
 
@@ -169,3 +170,30 @@ def write_widget(obj):
     script += "        return None\n"
 
     return script
+
+
+def ensure_widget_collection(context):
+    wgts_collection_name = "Widgets"
+
+    view_layer = context.view_layer
+    layer_collection = bpy.context.layer_collection
+    collection = layer_collection.collection
+
+    widget_collection = bpy.data.collections.get(wgts_collection_name)
+    if not widget_collection:
+        # ------------------------------------------
+        # Create the widget collection
+        widget_collection = bpy.data.collections.new(wgts_collection_name)
+        widget_collection.hide_viewport = True
+        widget_collection.hide_render = True
+
+        collection.children.link(widget_collection)
+        widget_layer_collection = [c for c in layer_collection.children if c.collection == widget_collection][0]
+    elif widget_collection == view_layer.layer_collection.collection:
+        widget_layer_collection = view_layer.layer_collection
+    else:
+        widget_layer_collection = get_layer_collection_from_collection(view_layer.layer_collection.children, widget_collection)
+
+    # Make the widget the active collection for the upcoming added (widget) objects
+    view_layer.active_layer_collection = widget_layer_collection
+    return widget_collection

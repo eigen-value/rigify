@@ -1,6 +1,4 @@
 import bpy
-
-
 from mathutils import Color
 
 
