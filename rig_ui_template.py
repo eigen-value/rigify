@@ -20,7 +20,7 @@
 
 UI_IMPORTS = [
     'import bpy',
-    'from bpy.props import StringProperty'
+    'from bpy.props import StringProperty',
     'import math',
     'from math import pi',
     'from mathutils import Euler, Matrix, Quaternion, Vector',
@@ -762,6 +762,7 @@ class Rigify_Rot2PoleSwitch(bpy.types.Operator):
     bl_idname = "pose.rigify_rot2pole_" + rig_id
     bl_label = "Rotation - Pole toggle"
     bl_description = "Toggles IK chain between rotation and pole target"
+
     bone_name: StringProperty(default='')
     limb_type: StringProperty(name="Limb Type")
     controls: StringProperty(name="Controls string")

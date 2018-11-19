@@ -151,9 +151,10 @@ class RigifyPreferences(AddonPreferences):
         default=False,
         update=update_legacy
     )
+
     show_expanded: BoolProperty()
 
-    show_rigs_folder_expanded = BoolProperty()
+    show_rigs_folder_expanded: BoolProperty()
 
     def draw(self, context):
         layout = self.layout
@@ -192,20 +193,20 @@ class RigifyPreferences(AddonPreferences):
         op = sub.operator('wm.context_toggle', text='', icon=icon,
                           emboss=False)
         op.data_path = 'addon_prefs.show_rigs_folder_expanded'
-        sub.label('{}: {}'.format('Rigify', 'External feature sets'))
+        sub.label(text='{}: {}'.format('Rigify', 'External feature sets'))
         if rigs_expand:
             if os.path.exists(os.path.join(bpy.utils.script_path_user(), 'rigify')):
                 feature_sets_path = os.path.join(bpy.utils.script_path_user(), 'rigify')
                 for fs in os.listdir(feature_sets_path):
                     row = col.row()
-                    row.label(fs)
+                    row.label(text=fs)
                     op = row.operator("wm.rigify_remove_feature_set", text="Remove", icon='CANCEL')
                     op.featureset = fs
             row = col.row(align=True)
-            row.operator("wm.rigify_add_feature_set", text="Install Feature Set from File...", icon='FILESEL')
+            row.operator("wm.rigify_add_feature_set", text="Install Feature Set from File...", icon='FILEBROWSER')
 
-            split = col.row().split(percentage=0.15)
-            split.label('Description:')
+            split = col.row().split(factor=0.15)
+            split.label(text='Description:')
             split.label(text='External feature sets (rigs, metarigs, ui layouts)')
 
         row = layout.row()
@@ -265,7 +266,7 @@ class RigifyParameters(bpy.types.PropertyGroup):
     name: StringProperty()
 
 
-RIGIFY_PARAMETER_TABLE = {'name': ('DEFAULT', bpy.props.StringProperty())}
+RIGIFY_PARAMETER_TABLE = {'name': ('DEFAULT', StringProperty())}
 
 
 def format_property_spec(spec):
@@ -407,7 +408,7 @@ def register():
         ), name='Theme')
 
     IDStore = bpy.types.WindowManager
-    IDStore.rigify_collection = EnumProperty(items=rig_lists.col_enum_list, default="All",
+    IDStore.rigify_collection = EnumProperty(items=(("All", "All", "All"),), default="All",
         name="Rigify Active Collection",
         description="The selected rig collection")
 
@@ -486,7 +487,7 @@ def unregister():
     del bpy.types.PoseBone.rigify_type
     del bpy.types.PoseBone.rigify_parameters
 
-    ArmStore = bpy.bpy.types.Armature
+    ArmStore = bpy.types.Armature
     del ArmStore.rigify_layers
     del ArmStore.active_feature_set
     del ArmStore.rigify_colors

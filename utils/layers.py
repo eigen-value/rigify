@@ -22,7 +22,7 @@ import bpy
 
 
 def get_layers(layers):
-    """ Does it's best to exctract a set of layers from any data thrown at it.
+    """ Does its best to extract a set of layers from any data thrown at it.
     """
     if type(layers) == int:
         return [x == layers for x in range(0, 32)]

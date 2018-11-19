@@ -171,8 +171,8 @@ def copy_bone(obj, bone_name, assign_name=''):
 
         edit_bone_2.use_deform = edit_bone_1.use_deform
         edit_bone_2.bbone_segments = edit_bone_1.bbone_segments
-        edit_bone_2.bbone_in = edit_bone_1.bbone_in
-        edit_bone_2.bbone_out = edit_bone_1.bbone_out
+        edit_bone_2.bbone_easein = edit_bone_1.bbone_easein
+        edit_bone_2.bbone_easeout = edit_bone_1.bbone_easeout
 
         bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -334,8 +334,8 @@ def align_bone_roll(obj, bone1, bone2):
     rot_mat = Matrix.Rotation(angle, 3, axis)
 
     # Roll factor
-    x3 = rot_mat * x1
-    dot = x2 * x3
+    x3 = rot_mat @ x1
+    dot = x2 @ x3
     if dot > 1.0:
         dot = 1.0
     elif dot < -1.0:
@@ -346,8 +346,8 @@ def align_bone_roll(obj, bone1, bone2):
     bone1_e.roll = roll
 
     # Check if we rolled in the right direction
-    x3 = rot_mat * bone1_e.x_axis
-    check = x2 * x3
+    x3 = rot_mat @ bone1_e.x_axis
+    check = x2 @ x3
 
     # If not, reverse
     if check < 0.9999:

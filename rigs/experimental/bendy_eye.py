@@ -1008,7 +1008,7 @@ def add_parameters(params):
             return ''
 
     class EyeName(bpy.types.PropertyGroup):
-        name = bpy.props.StringProperty()
+        name: bpy.props.StringProperty()
 
     bpy.utils.register_class(EyeName)
 

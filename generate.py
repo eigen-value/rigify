@@ -29,7 +29,7 @@ from collections import OrderedDict
 from .utils import MetarigError, new_bone
 from .utils import MCH_PREFIX, DEF_PREFIX, WGT_PREFIX, ROOT_NAME, make_original_name
 from .utils import create_root_widget
-from .utils import ensure_widget_collection
+from .utils.widgets import ensure_widget_collection
 from .utils import random_id
 from .utils import copy_attributes
 from .utils import gamma_correct
@@ -41,7 +41,6 @@ ORG_LAYER = [n == 31 for n in range(0, 32)]  # Armature layer that original bone
 MCH_LAYER = [n == 30 for n in range(0, 32)]  # Armature layer that mechanism bones should be moved to.
 DEF_LAYER = [n == 29 for n in range(0, 32)]  # Armature layer that deformation bones should be moved to.
 ROOT_LAYER = [n == 28 for n in range(0, 32)]  # Armature layer that root bone should be moved to.
-WGT_LAYERS = [x == 19 for x in range(0, 20)]  # Widgets go on the last scene layer.
 
 
 class Timer:
@@ -124,6 +123,7 @@ def generate_rig(context, metarig):
     # Remove wgts if force update is set
     wgts_group_name = "WGTS_" + (rig_old_name or obj.name)
     if wgts_group_name in scene.objects and id_store.rigify_force_widget_update:
+        bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
         for wgt in bpy.data.objects[wgts_group_name].children:
             wgt.select_set(True)

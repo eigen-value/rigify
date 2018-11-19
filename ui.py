@@ -592,6 +592,7 @@ class BONE_PT_rigify_buttons(bpy.types.Panel):
 
         # Build types list
         build_type_list(context, id_store.rigify_types)
+
         # Rig type field
         if len(feature_sets.feature_set_items(context.scene, context)) > 2:
             row = layout.row()
