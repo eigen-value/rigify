@@ -1,12 +1,11 @@
 import bpy
 from mathutils import Vector
-from math import pi
-from ...utils import copy_bone, flip_bone, put_bone, org, align_bone_y_axis, align_bone_x_axis, align_bone_z_axis
+from ...utils import copy_bone, put_bone, org, align_bone_y_axis, align_bone_x_axis, align_bone_z_axis
 from ...utils import strip_org, make_deformer_name, connected_children_names
 from ...utils import create_chain_widget
 from ...utils import make_mechanism_name, create_cube_widget
 from rna_prop_ui import rna_idprop_ui_prop_get
-from ..limbs.limb_utils import get_bone_name, orient_bone
+from ..limbs.limb_utils import get_bone_name
 
 
 class Rig:
@@ -63,78 +62,43 @@ class Rig:
 
         ctrl_name = get_bone_name(prefix, 'ctrl', 'pivot')
         ctrl_name = copy_bone(self.obj, pivot_name, ctrl_name)
-        ctrl_eb = eb[ ctrl_name ]
+        ctrl_eb = eb[ctrl_name]
 
-        self.orient_bone( ctrl_eb, 'y', self.spine_length / 2.5 )
+        self.orient_bone(ctrl_eb, 'y', self.spine_length / 2.5)
 
-        pivot_loc = eb[pivot_name].head + ((eb[pivot_name].tail - eb[pivot_name].head)/2)*(len(org_bones)%2)
+        pivot_loc = eb[pivot_name].head + ((eb[pivot_name].tail - eb[pivot_name].head)/2)*(len(org_bones) % 2)
 
-        put_bone( self.obj, ctrl_name, pivot_loc)
+        put_bone(self.obj, ctrl_name, pivot_loc)
 
         v = eb[org_bones[-1]].tail - eb[org_bones[0]].head  # Create a vector from head of first ORG to tail of last
         v.normalize()
         v_proj = eb[org_bones[0]].y_axis.dot(v)*v   # projection of first ORG to v
         v_point = eb[org_bones[0]].y_axis - v_proj  # a vector co-planar to first ORG and v directed out of the chain
 
-        if v_point.magnitude < eb[org_bones[0]].y_axis.magnitude*1e-03: #if v_point is too small it's not usable
+        if v_point.magnitude < eb[org_bones[0]].y_axis.magnitude*1e-03:     # if v_point is too small it's not usable
             v_point = eb[org_bones[0]].x_axis
 
         if self.params.tweak_axis == 'auto':
             align_bone_y_axis(self.obj, ctrl_name, v)
             align_bone_z_axis(self.obj, ctrl_name, -v_point)
         elif self.params.tweak_axis == 'x':
-            align_bone_y_axis(self.obj, ctrl_name, Vector((1,0,0)))
-            align_bone_x_axis(self.obj, ctrl_name, Vector((0,0,1)))
+            align_bone_y_axis(self.obj, ctrl_name, Vector((1, 0, 0)))
+            align_bone_x_axis(self.obj, ctrl_name, Vector((0, 0, 1)))
         elif self.params.tweak_axis == 'y':
-            align_bone_y_axis(self.obj, ctrl_name, Vector((0,1,0)))
-            align_bone_x_axis(self.obj, ctrl_name, Vector((1,0,0)))
+            align_bone_y_axis(self.obj, ctrl_name, Vector((0, 1, 0)))
+            align_bone_x_axis(self.obj, ctrl_name, Vector((1, 0, 0)))
         elif self.params.tweak_axis == 'z':
-            align_bone_y_axis(self.obj, ctrl_name, Vector((0,0,1)))
-            align_bone_x_axis(self.obj, ctrl_name, Vector((1,0,0)))
+            align_bone_y_axis(self.obj, ctrl_name, Vector((0, 0, 1)))
+            align_bone_x_axis(self.obj, ctrl_name, Vector((1, 0, 0)))
 
         return {
-            'ctrl' : ctrl_name
-        }#Todo modify following
-
-
-        org_bones  = self.org_bones
-        pivot_name = org_bones[pivot-1]
-
-        bpy.ops.object.mode_set(mode ='EDIT')
-        eb = self.obj.data.edit_bones
-
-        # Create torso control bone
-        torso_name = 'torso'
-        ctrl_name = copy_bone(self.obj, pivot_name, torso_name)
-        ctrl_eb = eb[ctrl_name]
-
-        self.orient_bone( ctrl_eb, 'y', self.spine_length / 2.5 )
-
-        # Create mch_pivot
-        mch_name = make_mechanism_name( 'pivot' )
-        mch_name = copy_bone(self.obj, ctrl_name, mch_name)
-        mch_eb = eb[mch_name]
-
-        mch_eb.length /= 4
-
-        # Positioning pivot in a more usable location for animators
-        if hasattr(self, 'tail_pos') and self.tail_pos > 0:
-            pivot_loc = eb[org_bones[pivot-1]].head
-        else:
-            pivot_loc = (eb[org_bones[0]].head + eb[org_bones[0]].tail) / 2
-
-        put_bone(self.obj, ctrl_name, pivot_loc)
-
-        return {
-            'ctrl': ctrl_name,
-            'mch': mch_name
+            'ctrl': ctrl_name
         }
 
     def create_deform(self):
         org_bones = self.org_bones
 
         bpy.ops.object.mode_set(mode='EDIT')
-        eb = self.obj.data.edit_bones
 
         def_bones = []
         for o in org_bones:
@@ -173,7 +137,8 @@ class Rig:
 
         mch_auto = ''
         if not self.SINGLE_BONE:
-            mch_name = copy_bone(self.obj, org(org_bones[0]), 'MCH-AUTO-'+strip_org(org_bones[0]).split('.')[0] + suffix)
+            mch_name = copy_bone(self.obj, org(org_bones[0]),
+                                 'MCH-AUTO-' + strip_org(org_bones[0]).split('.')[0] + suffix)
             eb[mch_name].head = eb[org_bones[0]].head
             eb[mch_name].tail = eb[org_bones[-1]].tail
 
@@ -258,7 +223,7 @@ class Rig:
 
                 self.orient_bone(eb[ctrl_name], 'y', eb[ctrl_name].length / 2)
 
-                #TODO check this if else
+                # TODO check this if else
                 if self.params.conv_bone:
                     align_bone_y_axis(self.obj, ctrl_name, eb[org(self.params.conv_bone)].y_axis)
                     align_bone_x_axis(self.obj, ctrl_name, eb[org(self.params.conv_bone)].x_axis)
@@ -345,7 +310,7 @@ class Rig:
         if 'pivot' in bones.keys():
             eb[bones['pivot']['ctrl']].use_inherit_scale = False
 
-        for i,mch in enumerate(bones['chain']['mch']):
+        for i, mch in enumerate(bones['chain']['mch']):
             if mch == bones['chain']['mch'][0]:
                 eb[mch].parent = eb[bones['chain']['ctrl'][0]]
             elif mch == bones['chain']['mch'][-1]:
@@ -397,7 +362,7 @@ class Rig:
         mch = bones['chain']['mch']
         mch_ctrl = bones['chain']['mch_ctrl']
         ctrls = bones['chain']['ctrl']
-        tweaks = [ ctrls[0]] + bones['chain']['tweak'] + [ ctrls[-1] ]
+        tweaks = [ctrls[0]] + bones['chain']['tweak'] + [ctrls[-1]]
 
         for i, d in enumerate(deform):
 
@@ -416,7 +381,7 @@ class Rig:
 
         if 'pivot' in bones.keys():
             step = 2/(len(self.org_bones))
-            for i,b in enumerate(mch_ctrl):
+            for i, b in enumerate(mch_ctrl):
                 xval = i*step
                 influence = 2*xval - xval**2    # parabolic influence of pivot
                 if (i != 0) and (i != len(mch_ctrl)-1):
@@ -516,7 +481,7 @@ class Rig:
             prop["description"] = prop
 
         # driving the follow rotation switches for neck and head
-        for bone, prop, in zip( owners, props ):
+        for bone, prop, in zip(owners, props):
             # Add driver to copy rotation constraint
             drv = pb[bone].constraints[0].driver_add("influence").driver
             drv.type = 'AVERAGE'
@@ -526,7 +491,7 @@ class Rig:
             var.type = "SINGLE_PROP"
             var.targets[0].id = self.obj
             var.targets[0].data_path = \
-                torso.path_from_id() + '['+ '"' + prop + '"' + ']'
+                torso.path_from_id() + '[' + '"' + prop + '"' + ']'
 
             drv_modifier = self.obj.animation_data.drivers[-1].modifiers[0]
 
@@ -606,7 +571,7 @@ class Rig:
 
     def generate(self):
 
-        bpy.ops.object.mode_set(mode ='EDIT')
+        bpy.ops.object.mode_set(mode='EDIT')
         eb = self.obj.data.edit_bones
 
         bones = {}
@@ -644,72 +609,39 @@ def add_parameters(params):
     ]
 
     params.tweak_axis = bpy.props.EnumProperty(
-        items   = items,
-        name    = "Tweak Axis",
-        default = 'auto'
+        items=items,
+        name="Tweak Axis",
+        default='auto'
     )
 
     params.conv_bone = bpy.props.StringProperty(
-        name = 'Convergence bone',
-        default = ''
+        name='Convergence bone',
+        default=''
     )
 
     params.bbones = bpy.props.IntProperty(
-        name        = 'bbone segments',
-        default     = 10,
-        min         = 1,
-        description = 'Number of segments'
+        name='bbone segments',
+        default=10,
+        min=1,
+        description='Number of segments'
     )
-
-    # params.neck_pos = bpy.props.IntProperty(
-    #     name        = 'neck_position',
-    #     default     = 6,
-    #     min         = 0,
-    #     description = 'Neck start position'
-    # )
-    #
-    # params.pivot_pos = bpy.props.IntProperty(
-    #     name         = 'pivot_position',
-    #     default      = 3,
-    #     min          = 0,
-    #     description  = 'Position of the torso control and pivot point'
-    # )
-    #
-    # params.tail_pos = bpy.props.IntProperty(
-    #     name        = 'tail_position',
-    #     default     = 0,
-    #     min         = 0,
-    #     description = 'Where the tail starts (change from 0 to enable)'
-    # )
 
     # Setting up extra layers for the FK and tweak
     params.tweak_extra_layers = bpy.props.BoolProperty(
-        name        = "tweak_extra_layers",
-        default     = True,
-        description = ""
+        name="tweak_extra_layers",
+        default=True,
+        description=""
         )
 
     params.tweak_layers = bpy.props.BoolVectorProperty(
-        size        = 32,
-        description = "Layers for the tweak controls to be on",
-        default     = tuple( [ i == 1 for i in range(0, 32) ] )
+        size=32,
+        description="Layers for the tweak controls to be on",
+        default=tuple([i == 1 for i in range(0, 32)])
         )
 
 
 def parameters_ui(layout, params):
     """ Create the ui for the rig parameters."""
-
-    # r = layout.row()
-    # r.prop(params, "neck_pos")
-    #
-    # r = layout.row()
-    # r.prop(params, "pivot_pos")
-    #
-    # r = layout.row()
-    # r.prop(params, "tail_pos")
-
-    # r = layout.row()
-    # r.prop(params, "control_num")
 
     pb = bpy.context.object.pose
 
@@ -717,8 +649,6 @@ def parameters_ui(layout, params):
     col = r.column(align=True)
     row = col.row(align=True)
     row.prop(params, "tweak_axis")
-    # for i,axis in enumerate( [ 'x', 'y', 'z' ] ):
-    #     row.prop(params, "tweak_axis", index=i, toggle=True, text=axis)
 
     r = layout.row()
     r.prop(params, "bbones")
@@ -743,7 +673,7 @@ def parameters_ui(layout, params):
 
     row = col.row(align=True)
 
-    for i in range(16,24):
+    for i in range(16, 24):
         icon = "NONE"
         if bone_layers[i]:
             icon = "LAYER_ACTIVE"
@@ -752,7 +682,7 @@ def parameters_ui(layout, params):
     col = r.column(align=True)
     row = col.row(align=True)
 
-    for i in range(8,16):
+    for i in range(8, 16):
         icon = "NONE"
         if bone_layers[i]:
             icon = "LAYER_ACTIVE"
@@ -760,7 +690,7 @@ def parameters_ui(layout, params):
 
     row = col.row(align=True)
 
-    for i in range(24,32):
+    for i in range(24, 32):
         icon = "NONE"
         if bone_layers[i]:
             icon = "LAYER_ACTIVE"
