@@ -1,7 +1,7 @@
 import bpy
 
 from ...utils import make_constraints_from_string, make_deformer_name, make_mechanism_name
-from ...utils import strip_org, copy_bone
+from ...utils import strip_org, copy_bone, put_bone
 
 from .base_rig import BaseRig
 
@@ -15,6 +15,8 @@ class Rig(BaseRig):
 
         self.glue_mode = params.glue_mode
         self.bones['ctrl']['all_ctrls'] = self.get_all_armature_ctrls()
+
+        self.bbones = params.bbones
 
     def get_all_armature_ctrls(self):
         """
@@ -98,8 +100,19 @@ class Rig(BaseRig):
         mch_bone = copy_bone(self.obj, self.base_bone, mch_bone)
         self.bones['glue_mch'] = mch_bone
 
-        DEF_LAYER = [n == 30 for n in range(0, 32)]
-        edit_bones[mch_bone].layers = DEF_LAYER
+        MCH_LAYER = [n == 30 for n in range(0, 32)]
+        edit_bones[mch_bone].layers = MCH_LAYER
+
+        if self.glue_mode == 'bridge':
+            self.bones['glue_mch'] = [mch_bone]
+            b = self.base_bone
+            put_bone(self.obj, mch_bone, edit_bones[b].head - (edit_bones[mch_bone].tail - edit_bones[mch_bone].head))
+
+            mch_bone = make_mechanism_name(strip_org(self.base_bone))
+            mch_bone = copy_bone(self.obj, self.base_bone, mch_bone)
+            self.bones['glue_mch'].append(mch_bone)
+            put_bone(self.obj, mch_bone, edit_bones[b].tail)
+            edit_bones[mch_bone].layers = MCH_LAYER
 
     def make_glue_constraints(self):
         bpy.ops.object.mode_set(mode='OBJECT')
@@ -154,6 +167,43 @@ class Rig(BaseRig):
         make_constraints_from_string(owner_pb, target=self.obj, subtarget=subtarget,
                                      fstring="CT1.0WW")
 
+    def make_bridge(self):
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
+
+        glue_bone = self.base_bone
+        head_ctrls = self.get_ctrls_by_position(edit_bones[glue_bone].head)
+        if not head_ctrls:
+            return
+        tail_ctrls = self.get_ctrls_by_position(edit_bones[glue_bone].tail)
+        if not tail_ctrls:
+            return
+
+        head = head_ctrls[0]
+        tail = tail_ctrls[0]
+
+        # Parenting
+        edit_bones[self.bones['glue_mch'][0]].parent = edit_bones[head]
+        edit_bones[self.bones['glue_mch'][1]].parent = edit_bones[tail]
+        edit_bones[self.bones['glue_def']].parent = edit_bones[self.bones['glue_mch'][0]]
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        pose_bones = self.obj.pose.bones
+
+        self.obj.data.bones[self.bones['glue_def']].bbone_segments = self.bbones
+
+        # CNS
+        def_pb = pose_bones[self.bones['glue_def']]
+        make_constraints_from_string(def_pb, target=self.obj, subtarget=tail, fstring="ST1.0")
+
+        owner_pb = pose_bones[glue_bone]
+        make_constraints_from_string(owner_pb, target=self.obj, subtarget=head, fstring="CT1.0WW")
+
+        if 'bbone_custom_handle_start' in dir(def_pb) and 'bbone_custom_handle_end' in dir(def_pb):
+            def_pb.bbone_custom_handle_start = pose_bones[self.bones['glue_mch'][0]]
+            def_pb.bbone_custom_handle_end = pose_bones[self.bones['glue_mch'][1]]
+            def_pb.use_bbone_custom_handles = True
+
     def glue(self):
         """
         Glue pass
@@ -166,6 +216,11 @@ class Rig(BaseRig):
         elif self.glue_mode == "def_mediator":
             self.create_mch()
             self.make_def_mediation()
+        elif self.glue_mode == "bridge":
+            self.create_def()
+            self.create_mch()
+            self.make_bridge()
+
 
     def generate(self):
         """
@@ -226,8 +281,16 @@ def add_parameters(params):
 
     items = [
         ('def_mediator', 'DEF-mediator', ''),
+        ('bridge', 'Bridge', ''),
         ('glue', 'Glue', '')
     ]
+
+    params.bbones = bpy.props.IntProperty(
+        name='bbone segments',
+        default=10,
+        min=1,
+        description='Number of segments'
+    )
 
     params.glue_mode = bpy.props.EnumProperty(
         items=items,
@@ -248,6 +311,10 @@ def parameters_ui(layout, params):
     """ Create the ui for the rig parameters."""
     row = layout.row()
     row.prop(params, "glue_mode")
+
+    if params.glue_mode == 'bridge':
+        r = layout.row()
+        r.prop(params, "bbones")
 
     if params.glue_mode == 'glue':
         row = layout.row()
