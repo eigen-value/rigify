@@ -152,6 +152,7 @@ class Rig:
                 eb[mch_name].length /= 4
                 put_bone(self.obj, mch_name, eb[b].head - (eb[mch_name].tail - eb[mch_name].head))
                 align_bone_z_axis(self.obj, mch_name, eb[b].z_axis)
+                mch += [mch_name]
                 mch_name = copy_bone(self.obj, org(b), make_mechanism_name(strip_org(b)))
                 eb[mch_name].length /= 4
                 put_bone(self.obj, mch_name, eb[b].tail)
@@ -355,13 +356,23 @@ class Rig:
             setattr(const, p, constraint[p])
 
     def constrain_bones(self, bones):
-        # DEF bones
 
         deform = bones['def']
         mch = bones['chain']['mch']
         mch_ctrl = bones['chain']['mch_ctrl']
         ctrls = bones['chain']['ctrl']
         tweaks = [ctrls[0]] + bones['chain']['tweak'] + [ctrls[-1]]
+
+        # ORG bones
+        for i, org_bone in enumerate(self.org_bones):
+            self.make_constraint(org_bone, {
+                'constraint': 'COPY_TRANSFORMS',
+                'subtarget': tweaks[i],
+                'owner_space': 'WORLD',
+                'target_space': 'WORLD'
+            })
+
+        # DEF bones
 
         for i, d in enumerate(deform):
 
