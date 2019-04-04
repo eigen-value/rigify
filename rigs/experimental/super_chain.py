@@ -152,28 +152,22 @@ class Rig:
                 eb[mch_name].length /= 4
                 put_bone(self.obj, mch_name, eb[b].head - (eb[mch_name].tail - eb[mch_name].head))
                 align_bone_z_axis(self.obj, mch_name, eb[b].z_axis)
-                if '.' in mch_name:
-                    mch_rev_name = mch_name.split('.')[0] + '_reverse.' + mch_name.split('.')[1]
-                else:
-                    mch_rev_name = mch_name + '_reverse'
-                mch_rev_name = copy_bone(self.obj, org(b), mch_rev_name)
-                eb[mch_rev_name].length /= 4
-                eb[mch_rev_name].tail = eb[mch_name].head
-                align_bone_z_axis(self.obj, mch_rev_name, eb[b].z_axis)
-                mch += [mch_name]
-                mch += [mch_rev_name]
-                break
-
-            mch_name = copy_bone(self.obj, org(b), make_mechanism_name(strip_org(b)))
-            eb[mch_name].length /= 4
-
-            mch += [mch_name]
-
-            if b == org_bones[-1]:  # Add extra
                 mch_name = copy_bone(self.obj, org(b), make_mechanism_name(strip_org(b)))
                 eb[mch_name].length /= 4
                 put_bone(self.obj, mch_name, eb[b].tail)
                 mch += [mch_name]
+                break
+            else:
+                mch_name = copy_bone(self.obj, org(b), make_mechanism_name(strip_org(b)))
+                eb[mch_name].length /= 4
+
+                mch += [mch_name]
+
+                if b == org_bones[-1]:  # Add extra
+                    mch_name = copy_bone(self.obj, org(b), make_mechanism_name(strip_org(b)))
+                    eb[mch_name].length /= 4
+                    put_bone(self.obj, mch_name, eb[b].tail)
+                    mch += [mch_name]
 
         # Tweak & Ctrl bones
         v = eb[org_bones[-1]].tail - eb[org_bones[0]].head  # Create a vector from head of first ORG to tail of last
@@ -249,6 +243,10 @@ class Rig:
                 conv_twk = copy_bone(self.obj, org(self.params.conv_bone), conv_twk)
 
         for b in org_bones:
+
+            if self.SINGLE_BONE:
+                break
+
             # Mch controls
             suffix = ''
             if '.L' in b:
@@ -257,7 +255,7 @@ class Rig:
                 suffix = '.R'
 
             mch_ctrl_name = "MCH-CTRL-" + strip_org(b).split('.')[0] + suffix
-            mch_ctrl_name = copy_bone(self.obj, twk[0], mch_ctrl_name)
+            mch_ctrl_name = copy_bone(self.obj, twk[0] if twk else ctrl[0], mch_ctrl_name)
 
             eb[mch_ctrl_name].length /= 6
 
@@ -267,7 +265,7 @@ class Rig:
 
             if b == org_bones[-1]:  # Add extra
                 mch_ctrl_name = "MCH-CTRL-" + strip_org(b).split('.')[0] + suffix
-                mch_ctrl_name = copy_bone(self.obj, twk[0], mch_ctrl_name)
+                mch_ctrl_name = copy_bone(self.obj, twk[0] if twk else ctrl[0], mch_ctrl_name)
 
                 eb[mch_ctrl_name].length /= 6
 
@@ -294,6 +292,9 @@ class Rig:
             if i > 0:   # For all bones but the first (which has no parent)
                 eb[b].parent = eb[bones['def'][i-1]]  # to previous
                 eb[b].use_connect = True
+            elif self.SINGLE_BONE:
+                eb[b].parent = eb[bones['chain']['mch'][0]]
+                eb[b].use_connect = True
 
         # Todo check case when sup_chain is in bigger rig
         eb[bones['def'][0]].parent = eb[bones['chain']['mch'][0]]
@@ -302,9 +303,9 @@ class Rig:
             eb[twk].parent = eb[bones['chain']['mch_ctrl'][i+1]]
             eb[twk].use_inherit_scale = False
 
-        eb[bones['chain']['ctrl'][0]].parent = eb[bones['chain']['mch_ctrl'][0]]
+        eb[bones['chain']['ctrl'][0]].parent = eb[bones['chain']['mch_ctrl'][0]] if bones['chain']['mch_ctrl'] else None
         eb[bones['chain']['ctrl'][0]].use_inherit_scale = False
-        eb[bones['chain']['ctrl'][1]].parent = eb[bones['chain']['mch_ctrl'][-1]]
+        eb[bones['chain']['ctrl'][1]].parent = eb[bones['chain']['mch_ctrl'][-1]] if bones['chain']['mch_ctrl'] else None
         eb[bones['chain']['ctrl'][1]].use_inherit_scale = False
 
         if 'pivot' in bones.keys():
@@ -335,10 +336,8 @@ class Rig:
         if self.SINGLE_BONE:
             eb[bones['chain']['ctrl'][0]].parent = None
             eb[bones['chain']['ctrl'][-1]].parent = None
-            eb[bones['chain']['mch_ctrl'][0]].parent = eb[bones['chain']['ctrl'][0]]
-            eb[bones['chain']['mch_ctrl'][-1]].parent = eb[bones['chain']['ctrl'][-1]]
-            eb[bones['chain']['mch'][0]].parent = eb[bones['chain']['mch'][1]]
-            eb[bones['chain']['mch'][1]].parent = eb[bones['chain']['mch_ctrl'][0]]
+            eb[bones['chain']['mch'][0]].parent = eb[bones['chain']['ctrl'][0]]
+            eb[bones['chain']['mch'][1]].parent = eb[bones['chain']['ctrl'][1]]
 
         return
 
@@ -446,7 +445,7 @@ class Rig:
         ctrl_start = pb[bones['chain']['ctrl'][0]]
         ctrl_end = pb[bones['chain']['ctrl'][-1]]
         mch_start = pb[bones['chain']['mch'][0]]
-        mch_end = pb[bones['chain']['mch_ctrl'][-1]]
+        mch_end = pb[bones['chain']['mch_ctrl'][-1]] if bones['chain']['mch_ctrl'] else pb[bones['chain']['mch'][-1]]
 
         if 'bbone_custom_handle_start' in dir(def_pb) and 'bbone_custom_handle_end' in dir(def_pb):
             if not self.SINGLE_BONE:
