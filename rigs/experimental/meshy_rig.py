@@ -11,8 +11,8 @@ class MeshyRig(ChainyRig):
     """
     MeshyRig basically adds an aggregate_ctrls pass to ChainyRig generate
     """
-    def __init__(self, obj, bone_name, params, chain_type=None):
-        super().__init__(obj, bone_name, params, chain_type=chain_type)
+    def __init__(self, obj, bone_name, params, single=False, chain_type=None):
+        super().__init__(obj, bone_name, params, single, chain_type)
 
         self.control_snapper = ControlSnapper(self.obj, self.bones)
 

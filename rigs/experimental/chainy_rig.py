@@ -22,6 +22,18 @@ class ChainyRig(BaseRig):
 
         self.layer_generator = ControlLayersGenerator(self)
 
+    def get_unconnected_children(self, bone=None):
+
+        if not bone:
+            bone = self.base_bone
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
+        bones = filter(lambda child: not child.use_connect, edit_bones[bone].children)
+        names = list(map(lambda b: b.name, bones))
+
+        return names
+
     def get_chains(self):
             """
             Returns all the ORG bones starting a chain in the rig and their subchains start bones
@@ -80,23 +92,30 @@ class ChainyRig(BaseRig):
 
         return chain
 
-    def get_subchains(self, name):
+    def get_subchains(self, name, exclude=None):
         """
 
-        :param chain_object:
-        :type chain_object: Chain
+        :param name:
+        :type name: parent chain bone name
+        :parameter exclude: list of subchains to exclude
         :return:
         """
 
         bpy.ops.object.mode_set(mode='EDIT')
         edit_bones = self.obj.data.edit_bones
 
+        if exclude is None:
+            exclude = []
+
+        print("exclude:")
+        print(exclude)
+
         subchains = []
 
         chain = self.get_chain_object_by_name(name)
 
         for bone in edit_bones[name].children:
-            if self.obj.pose.bones[bone.name].rigify_type == "" and not bone.use_connect:
+            if self.obj.pose.bones[bone.name].rigify_type == "" and not bone.use_connect and bone.name not in exclude:
                 subchain = Chain(self.obj, bone.name, self.orientation_bone, chain_type=chain.chain_type, parent=chain)
                 if subchain.length != chain.length:
                     raise MetarigError("Subchains of chain starting with %s are not the same length! assign a rig_type/"
