@@ -421,6 +421,37 @@ def make_nonscaling_child(obj, bone_name, location, child_name_postfix=""):
 # Widget creation
 #=============================================
 
+def adjust_widget(mesh, axis='y', offset=0.0):
+
+    if axis[0] == '-':
+        s = -1
+        axis = axis[1]
+    else:
+        s = 1
+
+    tr = offset
+
+    rot_matrix = Matrix(((1.0, 0.0, 0.0, 0.0),
+            (0.0, s*1.0, 0.0, tr),
+            (0.0, 0.0, 1.0, 0.0),
+            (0.0, 0.0, 0.0, 1.0)))
+
+    if axis == "x":
+        rot_matrix = Matrix(((0.0, s*1.0, 0.0, tr),
+                             (-s*1.0, 0.0, 0.0, 0.0),
+                             (0.0, 0.0, 1.0, 0.0),
+                             (0.0, 0.0, 0.0, 1.0)))
+
+    elif axis == "z":
+        rot_matrix = Matrix(((1.0, 0.0, 0.0, 0.0),
+                             (0.0, 0.0, -s*1.0, 0.0),
+                             (0.0, s*1.0, 0.0, tr),
+                             (0.0, 0.0, 0.0, 1.0)))
+
+    for vert in mesh.vertices:
+        vert.co = (rot_matrix * vert.co.to_4d()).to_3d()
+
+
 def obj_to_bone(obj, rig, bone_name):
     """ Places an object at the location/rotation/scale of the given bone.
     """
@@ -527,11 +558,11 @@ def create_cube_widget(rig, bone_name, radius=0.5, bone_transform_name=None):
         mesh.update()
 
 
-def create_chain_widget(rig, bone_name, radius=0.5, invert=False, bone_transform_name=None):
+def create_chain_widget(rig, bone_name, radius=0.5, invert=False, bone_transform_name=None, axis="y", offset=0.0):
     """Creates a basic chain widget
     """
     obj = create_widget(rig, bone_name, bone_transform_name)
-    if obj != None:
+    if obj is not None:
         r = radius
         rh = radius/2
         if invert:
@@ -542,6 +573,7 @@ def create_chain_widget(rig, bone_name, radius=0.5, invert=False, bone_transform
         mesh = obj.data
         mesh.from_pydata(verts, edges, [])
         mesh.update()
+        adjust_widget(mesh, axis=axis, offset=offset)
 
 
 def create_sphere_widget(rig, bone_name, bone_transform_name=None):

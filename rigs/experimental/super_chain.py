@@ -543,15 +543,23 @@ class Rig:
             bones['chain']['ctrl'][0],
             invert=False,
             radius=0.3,
-            bone_transform_name=None
+            bone_transform_name=None,
+            axis=self.params.wgt_align_axis,
+            offset=self.params.wgt_offset*pb[bones['chain']['ctrl'][0]].length
         )
+
+        invert_last = True
+        if self.params.wgt_align_axis is not 'y' or '-y':
+            invert_last = False
 
         create_chain_widget(
             self.obj,
             bones['chain']['ctrl'][-1],
-            invert=True,
+            invert=invert_last,
             radius=0.3,
-            bone_transform_name=None
+            bone_transform_name=None,
+            axis=self.params.wgt_align_axis,
+            offset=self.params.wgt_offset*pb[bones['chain']['ctrl'][0]].length
         )
 
         if bones['chain']['conv']:
@@ -614,6 +622,21 @@ def add_parameters(params):
         default='auto'
     )
 
+    axes = [
+        ('x', 'X', ''),
+        ('y', 'Y', ''),
+        ('z', 'Z', ''),
+        ('-x', '-X', ''),
+        ('-y', '-Y', ''),
+        ('-z', '-Z', '')
+    ]
+
+    params.wgt_align_axis = bpy.props.EnumProperty(
+        items=axes,
+        name="Widget Axis",
+        default='y'
+    )
+
     params.conv_bone = bpy.props.StringProperty(
         name='Convergence bone',
         default=''
@@ -624,6 +647,13 @@ def add_parameters(params):
         default=10,
         min=1,
         description='Number of segments'
+    )
+
+    params.wgt_offset = bpy.props.FloatProperty(
+        name='Widget Offset',
+        default=0.0,
+        min=-10.0,
+        max=10.0
     )
 
     # Setting up extra layers for the FK and tweak
@@ -649,6 +679,12 @@ def parameters_ui(layout, params):
     col = r.column(align=True)
     row = col.row(align=True)
     row.prop(params, "tweak_axis")
+
+    r = layout.row()
+    r.prop(params, "wgt_align_axis")
+
+    r = layout.row()
+    r.prop(params, "wgt_offset")
 
     r = layout.row()
     r.prop(params, "bbones")
