@@ -429,27 +429,22 @@ def adjust_widget(mesh, axis='y', offset=0.0):
     else:
         s = 1
 
-    tr = offset
-
+    trans_matrix = Matrix.Translation((0.0, offset, 0.0))
     rot_matrix = Matrix(((1.0, 0.0, 0.0, 0.0),
-            (0.0, s*1.0, 0.0, tr),
+            (0.0, s*1.0, 0.0, 0.0),
             (0.0, 0.0, 1.0, 0.0),
             (0.0, 0.0, 0.0, 1.0)))
 
     if axis == "x":
-        rot_matrix = Matrix(((0.0, s*1.0, 0.0, tr),
-                             (-s*1.0, 0.0, 0.0, 0.0),
-                             (0.0, 0.0, 1.0, 0.0),
-                             (0.0, 0.0, 0.0, 1.0)))
+        rot_matrix = Matrix.Rotation(-s*math.pi/2, 4, 'Z')
+        trans_matrix = Matrix.Translation((offset, 0.0, 0.0))
 
     elif axis == "z":
-        rot_matrix = Matrix(((1.0, 0.0, 0.0, 0.0),
-                             (0.0, 0.0, -s*1.0, 0.0),
-                             (0.0, s*1.0, 0.0, tr),
-                             (0.0, 0.0, 0.0, 1.0)))
+        rot_matrix = Matrix.Rotation(s*math.pi/2, 4, 'X')
+        trans_matrix = Matrix.Translation((0.0, 0.0, offset))
 
     for vert in mesh.vertices:
-        vert.co = (rot_matrix * vert.co.to_4d()).to_3d()
+        vert.co = (trans_matrix * rot_matrix * vert.co.to_4d()).to_3d()
 
 
 def obj_to_bone(obj, rig, bone_name):
