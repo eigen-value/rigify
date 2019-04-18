@@ -8,13 +8,14 @@
 import bpy
 from rna_prop_ui import rna_idprop_ui_prop_get
 
-from ...utils import copy_bone, align_bone_z_axis
+from ...utils import copy_bone, align_bone_z_axis, align_bone_y_axis
 from ...utils import strip_org, make_mechanism_name
 from ...utils import MetarigError
 from ...utils import make_constraints_from_string, create_cube_widget
 from ..widgets import create_jaw_widget
 from .meshy_rig import MeshyRig
 from .control_layers_generator import ControlLayersGenerator
+from mathutils import Vector
 
 script = """
 all_controls   = [%s]
@@ -152,6 +153,11 @@ class Rig(MeshyRig):
         edit_bones[jaw_ctrl].use_connect = False
 
         super().create_controls()
+
+        ctrls = self.get_all_ctrls()
+
+        for ctrl in ctrls:
+            align_bone_y_axis(self.obj, ctrl, Vector((0, 0, 1)))
 
     def make_constraints(self):
         """
