@@ -1,6 +1,5 @@
 import bpy
 import importlib
-import importlib
 from mathutils import Matrix, Vector
 from math import pi, sin, cos
 from ..utils import create_widget, create_circle_polygon

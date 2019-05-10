@@ -5,8 +5,10 @@
 
 import bpy
 
+from ...utils import strip_org, copy_bone, adjust_widget
+from ..widgets import create_widget_from_cluster
 from .meshy_rig import MeshyRig
-from .chain import Chain, ChainType
+from .chain import Chain
 
 
 class Rig(MeshyRig):
@@ -17,6 +19,44 @@ class Rig(MeshyRig):
         self.bbones = params.bbones
         self.nostril_bones = self.get_nostrils()
         self.add_front_nose_chain()
+
+    def create_controls(self):
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = self.obj.data.edit_bones
+
+        super().create_controls()
+
+        self.bones['nose_ctrl'] = {}
+
+        nose_master_name = strip_org(self.base_bone) + '_master'
+        nose_master_name = copy_bone(self.obj, self.base_bone, assign_name=nose_master_name)
+        self.bones['nose_ctrl']['nose_master'] = nose_master_name
+
+        last_bone = self.get_chain_bones(self.base_bone)[-1]
+        edit_bones[nose_master_name].tail = edit_bones[last_bone].tail
+
+    def create_widgets(self):
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        pose_bones = self.obj.pose.bones
+        last_bone = self.get_chain_object_by_name(self.base_bone).get_chain_bone_by_index(index=-1)
+        print(last_bone)
+
+        nose_master = self.bones['nose_ctrl']['nose_master']
+        cluster = [pose_bones[nose_master].bone.head, pose_bones[last_bone].bone.tail]
+        center = pose_bones[nose_master].bone.head + pose_bones[last_bone].bone.tail
+
+        for nostril in self.nostril_bones:
+            cluster.append(pose_bones[nostril].bone.head)
+            center += pose_bones[nostril].bone.head
+
+        wgt = create_widget_from_cluster(self.obj, nose_master, cluster)
+        center = center / len(cluster)
+        offset = (center - pose_bones[nose_master].bone.head).magnitude
+        print(offset)
+        adjust_widget(wgt.data, offset=offset)
+
+        super().create_widgets()
 
     def get_nostrils(self):
         return self.get_unconnected_children()

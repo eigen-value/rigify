@@ -256,7 +256,8 @@ class Chain:
         :return: str
         """
 
-        if index < 0 or index >= len(self._bones[bone_type]):
+        size = len(self._bones[bone_type])
+        if index < -size or index >= size:
             return ""
 
         return self._bones[bone_type][index]
