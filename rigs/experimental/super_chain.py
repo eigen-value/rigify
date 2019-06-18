@@ -321,9 +321,13 @@ class Rig:
                 eb[mch].parent = eb[bones['chain']['tweak'][i-1]]
 
         if 'parent' in bones.keys():
-            eb[bones['chain']['mch_auto']].parent = eb[bones['parent']]
-            eb[bones['chain']['mch_ctrl'][0]].parent = eb[bones['parent']]
-            eb[bones['chain']['mch_ctrl'][-1]].parent = eb[bones['parent']]
+            if self.SINGLE_BONE:
+                eb[bones['chain']['ctrl'][0]].parent = eb[bones['parent']]
+                eb[bones['chain']['ctrl'][-1]].parent = eb[bones['parent']]
+            else:
+                eb[bones['chain']['mch_auto']].parent = eb[bones['parent']]
+                eb[bones['chain']['mch_ctrl'][0]].parent = eb[bones['parent']]
+                eb[bones['chain']['mch_ctrl'][-1]].parent = eb[bones['parent']]
 
         for i, mch_ctrl in enumerate(bones['chain']['mch_ctrl'][1:-1]):
             eb[mch_ctrl].parent = eb[bones['chain']['mch_auto']]
@@ -335,8 +339,6 @@ class Rig:
             eb[bones['chain']['ctrl'][-1]].parent = eb[bones['chain']['conv']]
 
         if self.SINGLE_BONE:
-            eb[bones['chain']['ctrl'][0]].parent = None
-            eb[bones['chain']['ctrl'][-1]].parent = None
             eb[bones['chain']['mch'][0]].parent = eb[bones['chain']['ctrl'][0]]
             eb[bones['chain']['mch'][1]].parent = eb[bones['chain']['ctrl'][1]]
 
