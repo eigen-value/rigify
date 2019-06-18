@@ -119,7 +119,12 @@ class Rig:
             self.obj.data.bones[def_bones[-1]].bbone_out = 1.0
         bpy.ops.object.mode_set(mode='EDIT')
 
-        return def_bones
+        if self.params.conv_bone and self.params.conv_def:
+            b = org(self.params.conv_bone)
+            conv_def = make_deformer_name(strip_org(b))
+            conv_def = copy_bone(self.obj, b, conv_def)
+
+        return def_bones, conv_def
 
     def create_chain(self):
         org_bones = self.org_bones
@@ -337,6 +342,7 @@ class Rig:
 
         if bones['chain']['conv']:
             eb[bones['chain']['ctrl'][-1]].parent = eb[bones['chain']['conv']]
+            eb[bones['chain']['conv']].parent = eb[bones['chain']['conv']].parent
 
         if self.SINGLE_BONE:
             eb[bones['chain']['mch'][0]].parent = eb[bones['chain']['ctrl'][0]]
@@ -389,6 +395,14 @@ class Rig:
             self.make_constraint(d, {
                 'constraint': 'STRETCH_TO',
                 'subtarget': tweaks[i+1]
+            })
+
+        if bones['conv_def']:
+            self.make_constraint(bones['conv_def'], {
+                'constraint': 'COPY_TRANSFORMS',
+                'subtarget': bones['chain']['conv'],
+                'owner_space': 'POSE',
+                'target_space': 'POSE'
             })
 
         if 'pivot' in bones.keys():
@@ -603,7 +617,7 @@ class Rig:
             eb[bone].use_connect = False
             eb[bone].parent = None
 
-        bones['def'] = self.create_deform()
+        bones['def'], bones['conv_def'] = self.create_deform()
         if len(self.org_bones) > 2:
             bones['pivot'] = self.create_pivot()
         bones['chain'] = self.create_chain()
@@ -654,6 +668,12 @@ def add_parameters(params):
         default=''
     )
 
+    params.conv_def = bpy.props.BoolProperty(
+        name="Add DEF on convergence",
+        default=False,
+        description=""
+        )
+
     params.bbones = bpy.props.IntProperty(
         name='bbone segments',
         default=10,
@@ -703,6 +723,8 @@ def parameters_ui(layout, params):
 
     r = layout.row()
     r.prop_search(params, 'conv_bone', pb, "bones", text="Convergence Bone")
+    r = layout.row()
+    r.prop(params, 'conv_def')
 
     r = layout.row()
     r.prop(params, "tweak_extra_layers")
