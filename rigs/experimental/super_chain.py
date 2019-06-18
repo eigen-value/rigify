@@ -193,7 +193,7 @@ class Rig:
                 align_bone_x_axis(self.obj, name, eb[org(b)].x_axis)
                 ctrl += [name]
             else:
-                name = get_bone_name(b, 'ctrl', 'tweak')
+                name = 'tweak_' + strip_org(b)
                 name = copy_bone(self.obj, org(b), name)
                 twk += [name]
 
@@ -238,7 +238,7 @@ class Rig:
         conv_twk = ''
         # Convergence tweak
         if self.params.conv_bone:
-            conv_twk = get_bone_name(self.params.conv_bone, 'ctrl', 'tweak')
+            conv_twk = 'tweak_' + strip_org(self.params.conv_bone)
 
             if not(conv_twk in eb.keys()):
                 conv_twk = copy_bone(self.obj, org(self.params.conv_bone), conv_twk)
