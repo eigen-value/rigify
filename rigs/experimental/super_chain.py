@@ -119,6 +119,7 @@ class Rig:
             self.obj.data.bones[def_bones[-1]].bbone_out = 1.0
         bpy.ops.object.mode_set(mode='EDIT')
 
+        conv_def = ""
         if self.params.conv_bone and self.params.conv_def:
             b = org(self.params.conv_bone)
             conv_def = make_deformer_name(strip_org(b))
