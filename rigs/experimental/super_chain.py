@@ -613,6 +613,39 @@ class Rig:
 
         return
 
+    def aggregate_ctrls(self, bones):
+
+        if not self.params.cluster_ctrls:
+            return
+
+        other_ctrls = []
+        all_ctrls = []
+        eb = self.obj.data.edit_bones
+
+        head_start = eb[bones['chain']['ctrl'][0]].head
+        head_tip = eb[bones['chain']['ctrl'][-1]].head
+
+        all_ctrls.extend(bones['chain']['ctrl'])
+        all_ctrls.extend(bones['chain']['tweak'])
+        all_ctrls.extend(bones['chain']['conv'])
+        for bname in eb.keys():
+            if bname not in all_ctrls and (bname.startswith('tweak') or 'ctrl' in bname):
+                other_ctrls.append(bname)
+
+        for bname in other_ctrls:
+            if eb[bname].head == head_start:
+                for child in eb[bones['chain']['ctrl'][0]].children:
+                    child.parent = eb[bname]
+                eb.remove(eb[bones['chain']['ctrl'][0]])
+                bones['chain']['ctrl'][0] = bname
+                break
+
+        for bname in other_ctrls:
+            if eb[bname].head == head_tip:
+                eb.remove(eb[bones['chain']['ctrl'][-1]])
+                bones['chain']['ctrl'][-1] = bname
+                break
+
     def generate(self):
 
         bpy.ops.object.mode_set(mode='EDIT')
@@ -621,8 +654,6 @@ class Rig:
         bones = {}
         if eb[self.org_bones[0]].parent:
             def_name = make_deformer_name(strip_org(eb[self.org_bones[0]].parent.name))
-            if def_name not in eb.keys():
-                print("no bone named " + def_name)
             if self.params.def_parenting and def_name in eb.keys():
                 bones['parent'] = def_name
             else:
@@ -639,6 +670,10 @@ class Rig:
         bones['chain'] = self.create_chain()
 
         self.parent_bones(bones)
+
+        # ctrls snapping pass
+        self.aggregate_ctrls(bones)
+
         self.constrain_bones(bones)
         self.stick_to_bendy_bones(bones)
         self.locks_and_widgets(bones)
@@ -698,6 +733,12 @@ def add_parameters(params):
         description=""
         )
 
+    params.cluster_ctrls = bpy.props.BoolProperty(
+        name="Cluster controls",
+        default=False,
+        description="Clusterize controls in the same position"
+        )
+
     params.bbones = bpy.props.IntProperty(
         name='bbone segments',
         default=10,
@@ -753,6 +794,9 @@ def parameters_ui(layout, params):
 
     r = layout.row()
     r.prop(params, 'def_parenting')
+
+    r = layout.row()
+    r.prop(params, 'cluster_ctrls')
 
     r = layout.row()
     r.prop(params, "tweak_extra_layers")
