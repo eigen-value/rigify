@@ -554,13 +554,16 @@ def create_cube_widget(rig, bone_name, radius=0.5, bone_transform_name=None):
         mesh.update()
 
 
-def create_chain_widget(rig, bone_name, radius=0.5, invert=False, bone_transform_name=None, axis="y", offset=0.0):
+def create_chain_widget(rig, bone_name, cube=False, radius=0.5, invert=False, bone_transform_name=None, axis="y", offset=0.0):
     """Creates a basic chain widget
     """
     obj = create_widget(rig, bone_name, bone_transform_name)
     if obj is not None:
         r = radius
-        rh = radius/2
+        if cube:
+            rh = r
+        else:
+            rh = radius/2
         if invert:
             verts = [(rh, rh, rh), (r, -r, r), (-r, -r, r), (-rh, rh, rh), (rh, rh, -rh), (r, -r, -r), (-r, -r, -r), (-rh, rh, -rh)]
         else:

@@ -3,7 +3,7 @@ from mathutils import Vector
 from ...utils import copy_bone, put_bone, org, align_bone_y_axis, align_bone_x_axis, align_bone_z_axis
 from ...utils import strip_org, make_deformer_name, connected_children_names
 from ...utils import create_chain_widget
-from ...utils import make_mechanism_name, create_cube_widget
+from ...utils import make_mechanism_name
 from rna_prop_ui import rna_idprop_ui_prop_get
 from ..limbs.limb_utils import get_bone_name
 
@@ -550,19 +550,25 @@ class Rig:
 
         # Assigning a widget to main ctrl bone
         if 'pivot' in bones.keys():
-            create_cube_widget(
+            create_chain_widget(
                 self.obj,
                 bones['pivot']['ctrl'],
+                cube=True,
                 radius=0.15,
-                bone_transform_name=None
+                bone_transform_name=None,
+                axis=self.params.wgt_align_axis,
+                offset=self.params.wgt_offset*pb[bones['chain']['ctrl'][0]].length
             )
 
         for bone in bones['chain']['tweak']:
-            create_cube_widget(
+            create_chain_widget(
                 self.obj,
                 bone,
+                cube=True,
                 radius=0.2,
-                bone_transform_name=None
+                bone_transform_name=None,
+                axis=self.params.wgt_align_axis,
+                offset=self.params.wgt_offset*pb[bones['chain']['ctrl'][0]].length
             )
 
         create_chain_widget(
@@ -590,11 +596,14 @@ class Rig:
         )
 
         if bones['chain']['conv']:
-            create_cube_widget(
+            create_chain_widget(
                 self.obj,
                 bones['chain']['conv'],
+                cube=True,
                 radius=0.5,
-                bone_transform_name=None
+                bone_transform_name=None,
+                axis=self.params.wgt_align_axis,
+                offset=self.params.wgt_offset*pb[bones['chain']['ctrl'][0]].length
             )
 
         # Assigning layers to tweaks and ctrls
@@ -611,7 +620,13 @@ class Rig:
 
         bones = {}
         if eb[self.org_bones[0]].parent:
-            bones['parent'] = eb[self.org_bones[0]].parent.name
+            def_name = make_deformer_name(strip_org(eb[self.org_bones[0]].parent.name))
+            if def_name not in eb.keys():
+                print("no bone named " + def_name)
+            if self.params.def_parenting and def_name in eb.keys():
+                bones['parent'] = def_name
+            else:
+                bones['parent'] = eb[self.org_bones[0]].parent.name
 
         # Clear parents for org bones
         for bone in self.org_bones[0:]:
@@ -638,14 +653,15 @@ def add_parameters(params):
 
     items = [
         ('auto', 'Auto', ''),
-        ('x', 'X', ''),
-        ('y', 'Y', ''),
-        ('z', 'Z', '')
+        ('x', 'X-Global', ''),
+        ('y', 'Y-Global', ''),
+        ('z', 'Z-Global', '')
     ]
 
     params.tweak_axis = bpy.props.EnumProperty(
         items=items,
-        name="Tweak Axis",
+        name="Orient y-axis to",
+        description="Targets all ctrls y-axis to defined axis (global space)",
         default='auto'
     )
 
@@ -660,7 +676,8 @@ def add_parameters(params):
 
     params.wgt_align_axis = bpy.props.EnumProperty(
         items=axes,
-        name="Widget Axis",
+        name="Custom Widget orient",
+        description="Targets custom WGTs to defined axis (global space)",
         default='y'
     )
 
@@ -671,6 +688,12 @@ def add_parameters(params):
 
     params.conv_def = bpy.props.BoolProperty(
         name="Add DEF on convergence",
+        default=False,
+        description=""
+        )
+
+    params.def_parenting = bpy.props.BoolProperty(
+        name="Prefer DEF parenting",
         default=False,
         description=""
         )
@@ -724,8 +747,12 @@ def parameters_ui(layout, params):
 
     r = layout.row()
     r.prop_search(params, 'conv_bone', pb, "bones", text="Convergence Bone")
+
     r = layout.row()
     r.prop(params, 'conv_def')
+
+    r = layout.row()
+    r.prop(params, 'def_parenting')
 
     r = layout.row()
     r.prop(params, "tweak_extra_layers")
